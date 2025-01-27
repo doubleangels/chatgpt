@@ -94,7 +94,13 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
     channel_id = event.message.channel.id
     mention_str = f"<@{bot.user.id}>"
 
-    if message.author.id == bot.user.id:
+    is_reply_to_bot = (
+        message.message_reference and
+        message.message_reference.message_id and
+        (await message.channel.fetch_message(message.message_reference.message_id)).author.id == bot.user.id
+    )
+
+    if message.author.id == bot.user.id or is_reply_to_bot:
         return
 
     if mention_str in message.content:
