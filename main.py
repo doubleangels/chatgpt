@@ -95,11 +95,14 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
     channel_id = event.message.channel.id
     mention_str = f"<@{bot.user.id}>"
 
-    is_reply_to_bot = (
-        message.message_reference and
-        message.message_reference.message_id and
-        (await message.channel.fetch_message(message.message_reference.message_id)).author.id == bot.user.id
-    )
+    is_reply_to_bot = False
+    if message.message_reference and message.message_reference.message_id:
+        try:
+            referenced_message = await message.channel.fetch_message(message.message_reference.message_id)
+            if referenced_message and referenced_message.author.id == bot.user.id:
+                is_reply_to_bot = True
+        except Exception as e:
+            logger.warning(f"Failed to fetch referenced message: {e}")
 
     if message.author.id == bot.user.id or is_reply_to_bot:
         return
