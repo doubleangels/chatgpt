@@ -62,5 +62,3 @@ jobs:
           SENTRY_PROJECT: chatgpt
         with:
           environment: production
-          inject: true
-          sourcemaps: '.'
