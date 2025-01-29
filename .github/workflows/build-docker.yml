@@ -32,11 +32,24 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/chatgpt:latest
+
   delete-workflow-runs:
     runs-on: ubuntu-latest
     permissions:
         actions: write
         contents: read
+
+  create-sentry-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: doubleangels
+          SENTRY_PROJECT: chatgpt
+        with:
+          environment: production
 
     steps:
         - name: Delete workflow runs
