@@ -6,6 +6,7 @@ import logging
 import openai
 import signal
 import re
+import aiohttp
 from bs4 import BeautifulSoup
 from collections import defaultdict, deque
 from sentry_sdk.integrations.logging import LoggingIntegration
