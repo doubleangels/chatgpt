@@ -5,7 +5,7 @@ import sys
 import logging
 import openai
 import signal
-import re
+from bs4 import BeautifulSoup
 from collections import defaultdict, deque
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -121,6 +121,32 @@ async def generate_ai_response(conversation: list, channel) -> str:
     except Exception:
         logger.exception("Exception occurred during GPT-4o-mini response generation.")
         return ""
+    
+# Helper function to fetch the direct GIF URL from a Tenor/Giphy page.
+async def fetch_direct_gif(url: str) -> str:
+    """
+    Fetches the page at `url` and attempts to extract a direct GIF URL from the og:image meta tag.
+    Returns the direct image URL if found, or None otherwise.
+    """
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    logger.warning("Failed to retrieve URL %s (status %s)", url, response.status)
+                    return None
+                html = await response.text()
+    except Exception:
+        logger.exception("Error fetching URL %s", url)
+        return None
+
+    soup = BeautifulSoup(html, 'html.parser')
+    meta = soup.find('meta', property='og:image')
+    if meta and meta.get('content'):
+        direct_url = meta['content']
+        logger.debug("Extracted direct image URL %s from %s", direct_url, url)
+        return direct_url
+    logger.debug("No og:image meta tag found for URL %s", url)
+    return None
 
 # -------------------------
 # Event Listeners
@@ -256,7 +282,8 @@ async def reset(ctx: interactions.ComponentContext):
 async def analyze_message(ctx: interactions.ContextMenuContext):
     """
     Allows users to right-click a message, select 'Apps', and analyze it with GPT-4o-mini.
-    This version analyzes text, images, videos, and also inline GIF URLs.
+    This updated version also analyzes photos, videos, and GIFs attached to the message.
+    Additionally, it checks for Tenor/Giphy URLs in the message content and attempts to extract the direct GIF URL.
     """
     try:
         message: interactions.Message = ctx.target  # The selected message.
@@ -279,24 +306,24 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             if not attachment.content_type:
                 continue  # Skip attachments without a content type.
             if attachment.content_type.startswith("image/"):
-                # This captures photos and GIFs if they're sent as attachments.
+                # This will capture both photos and GIFs.
                 attachment_parts.append({"type": "image_url", "image_url": {"url": attachment.url}})
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
 
-        # --- New: Extract inline GIF URLs from message text ---
-        # This regex finds URLs ending with .gif (case-insensitive).
-        inline_gif_urls = re.findall(r'(https?://\S+\.gif)', message.content, re.IGNORECASE)
-        for url in inline_gif_urls:
-            # Optionally, avoid duplicates if the URL is already in attachment_parts.
-            if not any(url in part.get("image_url", {}).get("url", "") for part in attachment_parts):
-                attachment_parts.append({"type": "image_url", "image_url": {"url": url}})
-        if inline_gif_urls:
-            logger.debug("Found %d inline GIF URL(s) in the message.", len(inline_gif_urls))
-        # --- End inline GIF extraction ---
+        # Check message text for Tenor or Giphy URLs.
+        # This regex will match URLs beginning with http or https that contain either 'tenor.com' or 'giphy.com'.
+        tenor_giphy_pattern = r'(https?://(?:tenor\.com|giphy\.com)/\S+)'
+        for url in re.findall(tenor_giphy_pattern, message_text):
+            direct_url = await fetch_direct_gif(url)
+            if direct_url:
+                attachment_parts.append({"type": "image_url", "image_url": {"url": direct_url}})
+                logger.debug("Added direct GIF URL %s from %s", direct_url, url)
+            else:
+                logger.debug("Could not resolve a direct GIF URL for %s", url)
 
         if attachment_parts:
-            logger.debug("Message %s contains %d attachment(s)/inline GIF(s).", message.id, len(attachment_parts))
+            logger.debug("Message %s contains %d attachment(s) or resolved URLs.", message.id, len(attachment_parts))
 
         # Build the conversation payload.
         conversation = [
@@ -306,7 +333,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             }
         ]
         user_message_parts = [{"type": "text", "text": message_text}]
-        # Append the extracted attachment parts and inline GIF URLs.
+        # Append the extracted attachment parts.
         user_message_parts.extend(attachment_parts)
         conversation.append({"role": "user", "content": user_message_parts})
 
