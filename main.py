@@ -231,7 +231,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         channel_message_history[channel_id].append({"role": "assistant", "content": reply})
     except Exception:
         logger.exception("Unexpected error in on_message_create.")
-        
+
 # -------------------------
 # Slash Commands
 # -------------------------
@@ -255,6 +255,7 @@ async def reset(ctx: interactions.ComponentContext):
 async def analyze_message(ctx: interactions.ContextMenuContext):
     """
     Allows users to right-click a message, select 'Apps', and analyze it with GPT-4o-mini.
+    This updated version also analyzes photos, videos, and GIFs attached to the message.
     """
     try:
         message: interactions.Message = ctx.target  # The selected message.
@@ -268,24 +269,33 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             ctx.author.username, ctx.author.id, message.id, channel_id
         )
 
-        # Extract text and image URLs from the message.
+        # Extract text from the message.
         message_text = message.content or "No text found in message."
-        image_urls = [
-            attachment.url
-            for attachment in message.attachments
-            if attachment.content_type and attachment.content_type.startswith("image/")
-        ]
 
-        # Build the conversation payload for analysis.
+        # Extract attachments: images (including GIFs) and videos.
+        attachment_parts = []
+        for attachment in message.attachments:
+            if not attachment.content_type:
+                continue  # Skip attachments without a content type.
+            if attachment.content_type.startswith("image/"):
+                # This will capture both photos and GIFs.
+                attachment_parts.append({"type": "image_url", "image_url": {"url": attachment.url}})
+            elif attachment.content_type.startswith("video/"):
+                attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
+
+        if attachment_parts:
+            logger.debug("Message %s contains %d attachment(s).", message.id, len(attachment_parts))
+
+        # Build the conversation payload.
         conversation = [
-            {"role": "system", "content": "You are a helpful assistant that can analyze text and images."}
+            {
+                "role": "system",
+                "content": "You are a helpful assistant that can analyze text, images, videos, and GIFs."
+            }
         ]
         user_message_parts = [{"type": "text", "text": message_text}]
-        if image_urls:
-            logger.debug("Message %s contains %d image(s).", message.id, len(image_urls))
-            user_message_parts.extend(
-                [{"type": "image_url", "image_url": {"url": url}} for url in image_urls]
-            )
+        # Append the extracted attachment parts.
+        user_message_parts.extend(attachment_parts)
         conversation.append({"role": "user", "content": user_message_parts})
 
         # Defer the context menu response to allow processing time.
@@ -297,11 +307,13 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             return
 
         logger.debug("AI response: %s", reply)
+        # Send the reply in chunks if it is too long.
         for i in range(0, len(reply), 2000):
             await ctx.send(reply[i: i + 2000])
     except Exception:
         logger.exception("Unexpected error in Analyze with ChatGPT command.")
         await ctx.send("An unexpected error occurred.", ephemeral=True)
+
 
 # -------------------------
 # Bot Startup
