@@ -142,9 +142,12 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
     """
     Handles incoming messages:
       - Ignores the bot's own messages.
-      - Responds with GPT-4o-mini if the bot is mentioned or an image is attached.
+      - Responds with GPT-4o-mini if:
+          * the bot is mentioned,
+          * an image is attached, or
+          * the user is replying to one of the bot's messages.
       - Maintains conversation history per channel.
-      - Logs user prompt if the bot is mentioned.
+      - Logs user prompts.
     """
     try:
         message = event.message
@@ -154,8 +157,9 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         channel_id = message.channel.id
         bot_mention = f"<@{bot.user.id}>"
 
-        # Check if the message is a reply to the bot.
+        # Check if the message is a reply to another message and, if so, whether that message is from the bot.
         is_reply_to_bot = False
+        referenced_message = None
         if message.message_reference and message.message_reference.message_id:
             try:
                 referenced_message = await message.channel.fetch_message(
@@ -168,55 +172,66 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
                     channel_id
                 )
 
-        # Ignore the bot's own messages or messages replying to the bot.
-        if message.author.id == bot.user.id or is_reply_to_bot:
+        # Always ignore the bot's own messages.
+        if message.author.id == bot.user.id:
             return
 
-        # Check for bot mention or image attachments.
-        if bot_mention in message.content or message.attachments:
-            # Replace the mention with a friendly name for logging purposes.
-            message_formatted = message.content.replace(bot_mention, "@ChatGPT")
-            # Detailed user activity: using DEBUG level.
-            logger.debug(
-                "User '%s' (ID: %s) mentioned the bot in channel %s with prompt: %s",
-                message.author.username, message.author.id, channel_id, message_formatted
+        # Only process the message if one of the following is true:
+        #   - The message mentions the bot,
+        #   - The message has image attachments, or
+        #   - The message is a reply to a bot's message.
+        if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
+            return
+
+        # Log the user prompt (replacing the raw bot mention with a friendly name).
+        message_formatted = message.content.replace(bot_mention, "@ChatGPT")
+        logger.debug(
+            "User '%s' (ID: %s) sent a message in channel %s: %s",
+            message.author.username, message.author.id, channel_id, message_formatted
+        )
+
+        # Extract image URLs from attachments, if any.
+        image_urls = [
+            attachment.url
+            for attachment in message.attachments
+            if attachment.content_type and attachment.content_type.startswith("image/")
+        ]
+
+        # Build the conversation payload.
+        # Start with a system message.
+        conversation = [
+            {"role": "system", "content": "You are a helpful assistant that can analyze images and respond accordingly."}
+        ]
+
+        # If the user is replying to a bot message, include that message for context.
+        if is_reply_to_bot and referenced_message:
+            conversation.append({"role": "assistant", "content": referenced_message.content})
+
+        # Prepare the user's message parts.
+        user_message_parts = [{"type": "text", "text": message.content}]
+        if image_urls:
+            logger.debug("User '%s' uploaded %d image(s).", message.author.username, len(image_urls))
+            user_message_parts.extend(
+                [{"type": "image_url", "image_url": {"url": url}} for url in image_urls]
             )
+        conversation.append({"role": "user", "content": user_message_parts})
 
-            # Extract image URLs from attachments (if any).
-            image_urls = [
-                attachment.url
-                for attachment in message.attachments
-                if attachment.content_type and attachment.content_type.startswith("image/")
-            ]
+        # Get the AI-generated reply.
+        reply = await generate_ai_response(conversation, message.channel)
+        if not reply:
+            await message.channel.send("I couldn't generate a response.")
+            return
 
-            # Build the conversation payload.
-            conversation = [
-                {"role": "system", "content": "You are a helpful assistant that can analyze images and respond accordingly."}
-            ]
-            user_message_parts = [{"type": "text", "text": message.content}]
-            if image_urls:
-                logger.debug("User '%s' uploaded %d image(s).", message.author.username, len(image_urls))
-                user_message_parts.extend(
-                    [{"type": "image_url", "image_url": {"url": url}} for url in image_urls]
-                )
-            conversation.append({"role": "user", "content": user_message_parts})
+        logger.debug("AI response to %s: %s", message.author.username, reply)
+        # Send the reply in chunks if it is too long.
+        for i in range(0, len(reply), 2000):
+            await message.channel.send(reply[i: i + 2000])
 
-            # Get AI-generated reply.
-            reply = await generate_ai_response(conversation, message.channel)
-            if not reply:
-                await message.channel.send("I couldn't generate a response.")
-                return
-
-            logger.debug("AI response to %s: %s", message.author.username, reply)
-            # Send the reply in chunks if it's too long.
-            for i in range(0, len(reply), 2000):
-                await message.channel.send(reply[i: i + 2000])
-
-            # Add assistant reply to channel history.
-            channel_message_history[channel_id].append({"role": "assistant", "content": reply})
+        # Optionally, add the assistant's reply to the channel history.
+        channel_message_history[channel_id].append({"role": "assistant", "content": reply})
     except Exception:
         logger.exception("Unexpected error in on_message_create.")
-
+        
 # -------------------------
 # Slash Commands
 # -------------------------
