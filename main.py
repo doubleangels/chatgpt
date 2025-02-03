@@ -99,10 +99,11 @@ async def generate_ai_response(conversation: list, channel) -> str:
     Logs both the input and output for debugging.
     """
     try:
+        await channel.trigger_typing()
+
         # Log the input payload being sent to OpenAI.
         logger.debug("Sending conversation payload to OpenAI: %s", conversation)
         
-        await channel.defer()
         response = openai.chat.completions.create(
             model=MODEL_NAME,
             messages=conversation,
