@@ -5,6 +5,7 @@ import sys
 import logging
 import openai
 import signal
+import re
 from collections import defaultdict, deque
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -255,7 +256,7 @@ async def reset(ctx: interactions.ComponentContext):
 async def analyze_message(ctx: interactions.ContextMenuContext):
     """
     Allows users to right-click a message, select 'Apps', and analyze it with GPT-4o-mini.
-    This updated version also analyzes photos, videos, and GIFs attached to the message.
+    This version analyzes text, images, videos, and also inline GIF URLs.
     """
     try:
         message: interactions.Message = ctx.target  # The selected message.
@@ -278,13 +279,24 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             if not attachment.content_type:
                 continue  # Skip attachments without a content type.
             if attachment.content_type.startswith("image/"):
-                # This will capture both photos and GIFs.
+                # This captures photos and GIFs if they're sent as attachments.
                 attachment_parts.append({"type": "image_url", "image_url": {"url": attachment.url}})
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
 
+        # --- New: Extract inline GIF URLs from message text ---
+        # This regex finds URLs ending with .gif (case-insensitive).
+        inline_gif_urls = re.findall(r'(https?://\S+\.gif)', message.content, re.IGNORECASE)
+        for url in inline_gif_urls:
+            # Optionally, avoid duplicates if the URL is already in attachment_parts.
+            if not any(url in part.get("image_url", {}).get("url", "") for part in attachment_parts):
+                attachment_parts.append({"type": "image_url", "image_url": {"url": url}})
+        if inline_gif_urls:
+            logger.debug("Found %d inline GIF URL(s) in the message.", len(inline_gif_urls))
+        # --- End inline GIF extraction ---
+
         if attachment_parts:
-            logger.debug("Message %s contains %d attachment(s).", message.id, len(attachment_parts))
+            logger.debug("Message %s contains %d attachment(s)/inline GIF(s).", message.id, len(attachment_parts))
 
         # Build the conversation payload.
         conversation = [
@@ -294,7 +306,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             }
         ]
         user_message_parts = [{"type": "text", "text": message_text}]
-        # Append the extracted attachment parts.
+        # Append the extracted attachment parts and inline GIF URLs.
         user_message_parts.extend(attachment_parts)
         conversation.append({"role": "user", "content": user_message_parts})
 
@@ -313,7 +325,6 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
     except Exception:
         logger.exception("Unexpected error in Analyze with ChatGPT command.")
         await ctx.send("An unexpected error occurred.", ephemeral=True)
-
 
 # -------------------------
 # Bot Startup
