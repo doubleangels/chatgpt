@@ -6,8 +6,8 @@ import logging
 import openai
 import signal
 import re
+import html.parser
 import aiohttp
-from bs4 import BeautifulSoup
 from collections import defaultdict, deque
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -92,6 +92,7 @@ signal.signal(signal.SIGTERM, handle_interrupt)
 # -------------------------
 # Helper Function: Generate AI Response
 # -------------------------
+# Function to generate an AI response using OpenAI's GPT-4o-mini model.
 async def generate_ai_response(conversation: list, channel) -> str:
     """
     Sends the conversation payload to OpenAI and returns the reply.
@@ -123,8 +124,24 @@ async def generate_ai_response(conversation: list, channel) -> str:
     except Exception:
         logger.exception("Exception occurred during GPT-4o-mini response generation.")
         return ""
-    
-# Helper function to fetch the direct GIF URL from a Tenor/Giphy page.
+
+# Class and helper functions to derive direct links to gifs from Tenor/Giphy URLs.
+class OGImageParser(html.parser.HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.og_image = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() == "meta":
+            attr_dict = dict(attrs)
+            if attr_dict.get("property") == "og:image" and "content" in attr_dict:
+                self.og_image = attr_dict["content"]
+
+def extract_og_image(html_text: str) -> str:
+    parser = OGImageParser()
+    parser.feed(html_text)
+    return parser.og_image
+
 async def fetch_direct_gif(url: str) -> str:
     """
     Fetches the page at `url` and attempts to extract a direct GIF URL from the og:image meta tag.
@@ -136,19 +153,17 @@ async def fetch_direct_gif(url: str) -> str:
                 if response.status != 200:
                     logger.warning("Failed to retrieve URL %s (status %s)", url, response.status)
                     return None
-                html = await response.text()
+                html_text = await response.text()
     except Exception:
         logger.exception("Error fetching URL %s", url)
         return None
 
-    soup = BeautifulSoup(html, 'html.parser')
-    meta = soup.find('meta', property='og:image')
-    if meta and meta.get('content'):
-        direct_url = meta['content']
+    direct_url = extract_og_image(html_text)
+    if direct_url:
         logger.debug("Extracted direct image URL %s from %s", direct_url, url)
-        return direct_url
-    logger.debug("No og:image meta tag found for URL %s", url)
-    return None
+    else:
+        logger.debug("No og:image meta tag found for URL %s", url)
+    return direct_url
 
 # -------------------------
 # Event Listeners

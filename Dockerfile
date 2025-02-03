@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Upgrade pip and install dependencies without cache
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir discord-py-interactions openai sentry-sdk bs4
+    pip install --no-cache-dir discord-py-interactions openai sentry-sdk
 
 # Copy the application code into the container
 COPY main.py .
