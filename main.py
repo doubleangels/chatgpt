@@ -308,7 +308,6 @@ async def reset(ctx: interactions.ComponentContext):
         logger.exception(f"⚠️ Error in /reset command: {e}")
         await ctx.send("⚠️ An error occurred while resetting the conversation history.", ephemeral=True)
 
-
 # -------------------------
 # Context Menu Command: Analyze with ChatGPT
 # -------------------------
@@ -322,17 +321,16 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
     try:
         message: interactions.Message = ctx.target  # The selected message.
         if not message:
-            await ctx.send("Could not retrieve the message.", ephemeral=True)
+            await ctx.send("❌ Could not retrieve the message.", ephemeral=True)
             return
 
         channel_id = message.channel.id
         logger.debug(
-            "User '%s' (ID: %s) requested analysis for message %s in channel %s",
-            ctx.author.username, ctx.author.id, message.id, channel_id
+            f"🔍 User '{ctx.author.username}' (ID: {ctx.author.id}) requested analysis for message {message.id} in channel {channel_id}"
         )
 
         # Extract text from the message.
-        message_text = message.content or "No text found in message."
+        message_text = message.content or "📜 No text found in message."
 
         # Extract attachments: images (including GIFs) and videos.
         attachment_parts = []
@@ -340,24 +338,22 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             if not attachment.content_type:
                 continue  # Skip attachments without a content type.
             if attachment.content_type.startswith("image/"):
-                # This will capture both photos and GIFs.
                 attachment_parts.append({"type": "image_url", "image_url": {"url": attachment.url}})
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
 
-        # Check message text for Tenor or Giphy URLs.
-        # This regex will match URLs beginning with http or https that contain either 'tenor.com' or 'giphy.com'.
-        tenor_giphy_pattern = r'(https?://(?:tenor\.com|giphy\.com)/\S+)'
+        # Check message text for Tenor or Giphy URLs and resolve direct GIF URLs.
+        tenor_giphy_pattern = r"(https?://(?:tenor\.com|giphy\.com)/\S+)"
         for url in re.findall(tenor_giphy_pattern, message_text):
             direct_url = await fetch_direct_gif(url)
             if direct_url:
                 attachment_parts.append({"type": "image_url", "image_url": {"url": direct_url}})
-                logger.debug("Added direct GIF URL %s from %s", direct_url, url)
+                logger.debug(f"🖼️ Added direct GIF URL {direct_url} from {url}")
             else:
-                logger.debug("Could not resolve a direct GIF URL for %s", url)
+                logger.debug(f"⚠️ Could not resolve a direct GIF URL for {url}")
 
         if attachment_parts:
-            logger.debug("Message %s contains %d attachment(s) or resolved URLs.", message.id, len(attachment_parts))
+            logger.debug(f"📸 Message {message.id} contains {len(attachment_parts)} attachment(s) or resolved URLs.")
 
         # Build the conversation payload.
         conversation = [
@@ -367,8 +363,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             }
         ]
         user_message_parts = [{"type": "text", "text": message_text}]
-        # Append the extracted attachment parts.
-        user_message_parts.extend(attachment_parts)
+        user_message_parts.extend(attachment_parts)  # Append extracted attachments.
         conversation.append({"role": "user", "content": user_message_parts})
 
         # Defer the context menu response to allow processing time.
@@ -376,16 +371,18 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 
         reply = await generate_ai_response(conversation, ctx.channel)
         if not reply:
-            await ctx.send("I couldn't generate a response.")
+            await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
             return
 
-        logger.debug("AI response: %s", reply)
+        logger.debug(f"🤖 AI response: {reply}")
+
         # Send the reply in chunks if it is too long.
         for i in range(0, len(reply), 2000):
             await ctx.send(reply[i: i + 2000])
-    except Exception:
-        logger.exception("Unexpected error in Analyze with ChatGPT command.")
-        await ctx.send("An unexpected error occurred.", ephemeral=True)
+
+    except Exception as e:
+        logger.exception(f"⚠️ Unexpected error in 'Analyze with ChatGPT' command: {e}")
+        await ctx.send("⚠️ An unexpected error occurred.", ephemeral=True)
 
 # -------------------------
 # Bot Startup
