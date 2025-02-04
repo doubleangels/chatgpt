@@ -182,12 +182,12 @@ async def on_ready():
     await bot.change_presence(
         status=interactions.Status.ONLINE,
         activity=interactions.Activity(
-            name="for pings!",
+            name="for pings! 📡",
             type=interactions.ActivityType.WATCHING
         )
     )
-    # High-level operational message; remains INFO.
-    logger.info("I am online and ready!")
+    logger.info("✅ I am online and ready!")
+
 
 @interactions.listen()
 async def on_message_create(event: interactions.api.events.MessageCreate):
@@ -209,7 +209,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         channel_id = message.channel.id
         bot_mention = f"<@{bot.user.id}>"
 
-        # Check if the message is a reply to another message and, if so, whether that message is from the bot.
+        # Check if the message is a reply to another message and whether that message is from the bot.
         is_reply_to_bot = False
         referenced_message = None
         if message.message_reference and message.message_reference.message_id:
@@ -218,19 +218,18 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
                     message.message_reference.message_id
                 )
                 is_reply_to_bot = referenced_message and (referenced_message.author.id == bot.user.id)
-            except Exception:
+            except Exception as e:
                 logger.exception(
-                    "Failed to fetch referenced message in channel %s. Possible permissions issue.",
-                    channel_id
+                    f"⚠️ Failed to fetch referenced message in channel {channel_id}. Possible permissions issue: {e}"
                 )
 
-        # Always ignore the bot's own messages.
+        # Ignore the bot's own messages.
         if message.author.id == bot.user.id:
             return
 
-        # Only process the message if one of the following is true:
-        #   - The message mentions the bot,
-        #   - The message has image attachments, or
+        # Process the message if:
+        #   - The bot is mentioned,
+        #   - The message has image attachments,
         #   - The message is a reply to a bot's message.
         if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
             return
@@ -238,8 +237,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         # Log the user prompt (replacing the raw bot mention with a friendly name).
         message_formatted = message.content.replace(bot_mention, "@ChatGPT")
         logger.debug(
-            "User '%s' (ID: %s) sent a message in channel %s: %s",
-            message.author.username, message.author.id, channel_id, message_formatted
+            f"💬 User '{message.author.username}' (ID: {message.author.id}) sent a message in channel {channel_id}: {message_formatted}"
         )
 
         # Extract image URLs from attachments, if any.
@@ -248,9 +246,10 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             for attachment in message.attachments
             if attachment.content_type and attachment.content_type.startswith("image/")
         ]
+        if image_urls:
+            logger.debug(f"🖼️ User '{message.author.username}' uploaded {len(image_urls)} image(s).")
 
         # Build the conversation payload.
-        # Start with a system message.
         conversation = [
             {"role": "system", "content": "You are a helpful assistant that can analyze images and respond accordingly."}
         ]
@@ -262,27 +261,29 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         # Prepare the user's message parts.
         user_message_parts = [{"type": "text", "text": message.content}]
         if image_urls:
-            logger.debug("User '%s' uploaded %d image(s).", message.author.username, len(image_urls))
             user_message_parts.extend(
                 [{"type": "image_url", "image_url": {"url": url}} for url in image_urls]
             )
+
         conversation.append({"role": "user", "content": user_message_parts})
 
         # Get the AI-generated reply.
         reply = await generate_ai_response(conversation, message.channel)
         if not reply:
-            await message.channel.send("I couldn't generate a response.")
+            await message.channel.send("⚠️ I couldn't generate a response.")
             return
 
-        logger.debug("AI response to %s: %s", message.author.username, reply)
+        logger.debug(f"🤖 AI response to {message.author.username}: {reply}")
+
         # Send the reply in chunks if it is too long.
         for i in range(0, len(reply), 2000):
             await message.channel.send(reply[i: i + 2000])
 
         # Optionally, add the assistant's reply to the channel history.
         channel_message_history[channel_id].append({"role": "assistant", "content": reply})
-    except Exception:
-        logger.exception("Unexpected error in on_message_create.")
+
+    except Exception as e:
+        logger.exception(f"⚠️ Unexpected error in on_message_create: {e}")
 
 # -------------------------
 # Slash Commands
