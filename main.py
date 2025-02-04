@@ -295,11 +295,19 @@ async def reset(ctx: interactions.ComponentContext):
     Only admins can use this command.
     """
     if not ctx.author.has_permission(interactions.Permissions.ADMINISTRATOR):
-        await ctx.send("You do not have permission to use this command.", ephemeral=True)
+        await ctx.send("❌ You do not have permission to use this command.", ephemeral=True)
+        logger.warning(f"⚠️ Unauthorized /reset attempt by {ctx.author.username} ({ctx.author.id})")
         return
 
-    channel_message_history.clear()
-    await ctx.send("Global conversation history has been reset.", ephemeral=True)
+    try:
+        channel_message_history.clear()
+        await ctx.send("🗑️ **Global conversation history has been reset.**", ephemeral=True)
+        logger.info(f"🗑️ Conversation history reset by {ctx.author.username} ({ctx.author.id})")
+
+    except Exception as e:
+        logger.exception(f"⚠️ Error in /reset command: {e}")
+        await ctx.send("⚠️ An error occurred while resetting the conversation history.", ephemeral=True)
+
 
 # -------------------------
 # Context Menu Command: Analyze with ChatGPT
