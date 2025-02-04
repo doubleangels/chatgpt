@@ -99,28 +99,30 @@ async def generate_ai_response(conversation: list, channel) -> str:
     """
     try:
         # Log the input payload being sent to OpenAI.
-        logger.debug("Sending conversation payload to OpenAI: %s", conversation)
-        
+        logger.debug(f"📝 Sending conversation payload to OpenAI: {conversation}")
+
         response = openai.chat.completions.create(
             model=MODEL_NAME,
             messages=conversation,
             max_tokens=500,
             temperature=0.7,
         )
-        
+
         # Log the raw response from OpenAI.
-        logger.debug("Received response from OpenAI: %s", response)
-        
+        logger.debug(f"🤖 Received response from OpenAI: {response}")
+
         if not response.choices:
-            logger.debug("OpenAI API returned no choices.")
+            logger.warning("⚠️ OpenAI API returned no choices.")
             return ""
+
         reply = response.choices[0].message.content
-        
+
         # Log the final reply extracted from the response.
-        logger.debug("Final reply from OpenAI: %s", reply)
+        logger.debug(f"💬 Final reply from OpenAI: {reply}")
         return reply
-    except Exception:
-        logger.exception("Exception occurred during GPT-4o-mini response generation.")
+
+    except Exception as e:
+        logger.exception(f"⚠️ Exception occurred during AI response generation: {e}")
         return ""
 
 class OGImageParser(html.parser.HTMLParser):
@@ -135,8 +137,15 @@ class OGImageParser(html.parser.HTMLParser):
                 self.og_image = attr_dict["content"]
 
 def extract_og_image(html_text: str) -> str:
+    """
+    Extracts the Open Graph (OG) image URL from HTML metadata.
+    """
     parser = OGImageParser()
     parser.feed(html_text)
+    if parser.og_image:
+        logger.debug(f"🌐 Extracted OG image URL: {parser.og_image}")
+    else:
+        logger.warning("⚠️ No og:image meta tag found in the HTML.")
     return parser.og_image
 
 async def fetch_direct_gif(url: str) -> str:
@@ -148,18 +157,20 @@ async def fetch_direct_gif(url: str) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status != 200:
-                    logger.warning("Failed to retrieve URL %s (status %s)", url, response.status)
+                    logger.warning(f"⚠️ Failed to retrieve URL {url} (status {response.status})")
                     return None
                 html_text = await response.text()
-    except Exception:
-        logger.exception("Error fetching URL %s", url)
+
+    except Exception as e:
+        logger.exception(f"⚠️ Error fetching URL {url}: {e}")
         return None
 
     direct_url = extract_og_image(html_text)
     if direct_url:
-        logger.debug("Extracted direct image URL %s from %s", direct_url, url)
+        logger.debug(f"🎞️ Extracted direct GIF URL {direct_url} from {url}")
     else:
-        logger.debug("No og:image meta tag found for URL %s", url)
+        logger.warning(f"⚠️ No OG image found for URL {url}")
+    
     return direct_url
 
 # -------------------------
