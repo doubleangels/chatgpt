@@ -223,6 +223,8 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         #   - The message is a reply to a bot's message.
         if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
             return
+        elif bot_mention in message.content:
+            bot.trigger_typing(message.channel)
 
         # Log the user prompt (replacing the raw bot mention with a friendly name).
         message_formatted = message.content.replace(bot_mention, "@ChatGPT")
