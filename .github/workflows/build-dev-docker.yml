@@ -25,7 +25,7 @@ jobs:
 
       - name: Install code-quality dependencies
         run: |
-          pip install flake8 pylint
+          pip install flake8 pylint isort
 
       - name: Run flake8 (lint)
         run: |
@@ -33,7 +33,11 @@ jobs:
 
       - name: Run pylint (lint)
         run: |
-          pylint . --errors-only       
+          pylint . --errors-only
+          
+      - name: Check import order with isort
+        run: |
+          isort . --check --diff
 
   build-and-push:
     name: build-and-push-dev-image
