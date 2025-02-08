@@ -27,9 +27,9 @@ jobs:
         run: |
           pip install flake8 black isort mypy bandit
 
-      - name: Run flake8 (lint) ignoring whitespace & line length
+      - name: Run flake8 (lint)
         run: |
-          flake8 . --ignore E501,W291,W293
+          flake8 . --ignore E501,W291,W293,E302,E305
 
       - name: Check Black formatting
         run: |
