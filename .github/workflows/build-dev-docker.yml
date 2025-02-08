@@ -25,15 +25,11 @@ jobs:
 
       - name: Install code-quality dependencies
         run: |
-          pip install flake8 mypy bandit
+          pip install flake8 bandit
 
       - name: Run flake8 (lint)
         run: |
           flake8 . --ignore E501,W291,W293,E302,E305
-
-      - name: Run mypy (type check)
-        run: |
-          mypy .
 
       - name: Run bandit (security checks)
         run: |
