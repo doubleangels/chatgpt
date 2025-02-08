@@ -1,7 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    name: dependabot
     directory: "/"
     schedule:
       interval: "daily"
