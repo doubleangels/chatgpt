@@ -33,7 +33,7 @@ jobs:
 
       - name: Run pylint (lint)
         run: |
-          pylint . --errors-only --disable=C,R         
+          pylint . --errors-only       
 
   build-and-push:
     name: build-and-push-dev-image
