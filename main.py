@@ -1,14 +1,14 @@
-import interactions
-import sentry_sdk
 import os
 import sys
 import logging
-import openai
-import signal
 import re
 import html.parser
-import aiohttp
 from collections import defaultdict, deque
+import interactions
+import sentry_sdk
+import openai
+import signal
+import aiohttp
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 # -------------------------

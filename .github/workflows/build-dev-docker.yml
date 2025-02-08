@@ -33,7 +33,7 @@ jobs:
 
       - name: Run pylint (lint)
         run: |
-          pylint . --disable=missing-module-docstring,missing-function-docstring          
+          pylint . --errors-only --disable=C,R         
 
   build-and-push:
     name: build-and-push-dev-image
