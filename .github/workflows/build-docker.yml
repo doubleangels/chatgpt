@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Cache Docker layers
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: /home/runner/.cache/buildx
           key: buildx-${{ github.ref_name }}-${{ github.sha }}
