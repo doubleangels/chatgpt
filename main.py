@@ -100,7 +100,7 @@ async def generate_ai_response(conversation: list, channel) -> str:
     """
     try:
         # Log the input payload being sent to OpenAI.
-        logger.debug(f"📝 Sending conversation payload to OpenAI: {conversation}")
+        logger.debug(f"Sending conversation payload to OpenAI: {conversation}")
 
         response = openai.chat.completions.create(
             model=MODEL_NAME,
@@ -110,20 +110,20 @@ async def generate_ai_response(conversation: list, channel) -> str:
         )
 
         # Log the raw response from OpenAI.
-        logger.debug(f"🤖 Received response from OpenAI: {response}")
+        logger.debug(f"Received response from OpenAI: {response}")
 
         if not response.choices:
-            logger.warning("⚠️ OpenAI API returned no choices.")
+            logger.warning("OpenAI API returned no choices.")
             return ""
 
         reply = response.choices[0].message.content
 
         # Log the final reply extracted from the response.
-        logger.debug(f"💬 Final reply from OpenAI: {reply}")
+        logger.debug(f"Final reply from OpenAI: {reply}")
         return reply
 
     except Exception as e:
-        logger.exception(f"⚠️ Exception occurred during AI response generation: {e}")
+        logger.exception(f"Exception occurred during AI response generation: {e}")
         return ""
 
 class OGImageParser(html.parser.HTMLParser):
@@ -144,9 +144,9 @@ def extract_og_image(html_text: str) -> str:
     parser = OGImageParser()
     parser.feed(html_text)
     if parser.og_image:
-        logger.debug(f"🌐 Extracted OG image URL: {parser.og_image}")
+        logger.debug(f"Extracted OG image URL: {parser.og_image}")
     else:
-        logger.warning("⚠️ No og:image meta tag found in the HTML.")
+        logger.warning("No og:image meta tag found in the HTML.")
     return parser.og_image
 
 async def fetch_direct_gif(url: str) -> str:
@@ -158,19 +158,19 @@ async def fetch_direct_gif(url: str) -> str:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 if response.status != 200:
-                    logger.warning(f"⚠️ Failed to retrieve URL {url} (status {response.status})")
+                    logger.warning(f"Failed to retrieve URL {url} (status {response.status})")
                     return None
                 html_text = await response.text()
 
     except Exception as e:
-        logger.exception(f"⚠️ Error fetching URL {url}: {e}")
+        logger.exception(f"Error fetching URL {url}: {e}")
         return None
 
     direct_url = extract_og_image(html_text)
     if direct_url:
-        logger.debug(f"🎞️ Extracted direct GIF URL {direct_url} from {url}")
+        logger.debug(f"Extracted direct GIF URL {direct_url} from {url}")
     else:
-        logger.warning(f"⚠️ No OG image found for URL {url}")
+        logger.warning(f"No OG image found for URL {url}")
     
     return direct_url
 
@@ -187,7 +187,7 @@ async def on_ready():
             type=interactions.ActivityType.WATCHING
         )
     )
-    logger.info("✅ I am online and ready!")
+    logger.info("I am online and ready!")
 
 @interactions.listen()
 async def on_message_create(event: interactions.api.events.MessageCreate):
@@ -220,7 +220,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
                 is_reply_to_bot = referenced_message and (referenced_message.author.id == bot.user.id)
             except Exception as e:
                 logger.exception(
-                    f"⚠️ Failed to fetch referenced message in channel {channel_id}. Possible permissions issue: {e}"
+                    f"Failed to fetch referenced message in channel {channel_id}. Possible permissions issue: {e}"
                 )
 
         # Ignore the bot's own messages.
@@ -236,12 +236,12 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         elif bot_mention in message.content:
             message.channel.trigger_typing()
 
-        logger.debug(f"📌 Bot was mentioned in message {message.id} in channel {channel_id}.")
+        logger.debug(f"Bot was mentioned in message {message.id} in channel {channel_id}.")
 
         # Log the user prompt (replacing the raw bot mention with a friendly name).
         message_formatted = message.content.replace(bot_mention, "@ChatGPT")
         logger.debug(
-            f"💬 User '{message.author.username}' (ID: {message.author.id}) sent a message in channel {channel_id}: {message_formatted}"
+            f"User '{message.author.username}' (ID: {message.author.id}) sent a message in channel {channel_id}: {message_formatted}"
         )
 
         # Extract image URLs from attachments, if any.
@@ -251,7 +251,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             if attachment.content_type and attachment.content_type.startswith("image/")
         ]
         if image_urls:
-            logger.debug(f"🖼️ User '{message.author.username}' uploaded {len(image_urls)} image(s).")
+            logger.debug(f"User '{message.author.username}' uploaded {len(image_urls)} image(s).")
 
         # Build the conversation payload.
         conversation = [
@@ -278,7 +278,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             await message.channel.send("⚠️ I couldn't generate a response.", reply_to=message.id)
             return
 
-        logger.debug(f"🤖 AI response to {message.author.username}: {reply}")
+        logger.debug(f"AI response to {message.author.username}: {reply}")
 
         # Send the reply as a reply to the original message
         for i in range(0, len(reply), 2000):
@@ -288,7 +288,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         channel_message_history[channel_id].append({"role": "assistant", "content": reply})
 
     except Exception as e:
-        logger.exception(f"⚠️ Unexpected error in on_message_create: {e}")
+        logger.exception(f"Unexpected error in on_message_create: {e}")
 
 # -------------------------
 # Slash Commands
@@ -301,16 +301,16 @@ async def reset(ctx: interactions.ComponentContext):
     """
     if not ctx.author.has_permission(interactions.Permissions.ADMINISTRATOR):
         await ctx.send("❌ You do not have permission to use this command.", ephemeral=True)
-        logger.warning(f"⚠️ Unauthorized /reset attempt by {ctx.author.username} ({ctx.author.id})")
+        logger.warning(f"Unauthorized /reset attempt by {ctx.author.username} ({ctx.author.id})")
         return
 
     try:
         channel_message_history.clear()
         await ctx.send("🗑️ **Global conversation history has been reset.**", ephemeral=True)
-        logger.info(f"🗑️ Conversation history reset by {ctx.author.username} ({ctx.author.id})")
+        logger.info(f"Conversation history reset by {ctx.author.username} ({ctx.author.id})")
 
     except Exception as e:
-        logger.exception(f"⚠️ Error in /reset command: {e}")
+        logger.exception(f"Error in /reset command: {e}")
         await ctx.send("⚠️ An error occurred while resetting the conversation history.", ephemeral=True)
 
 # -------------------------
@@ -331,7 +331,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 
         channel_id = message.channel.id
         logger.debug(
-            f"🔍 User '{ctx.author.username}' (ID: {ctx.author.id}) requested analysis for message {message.id} in channel {channel_id}"
+            f"User '{ctx.author.username}' (ID: {ctx.author.id}) requested analysis for message {message.id} in channel {channel_id}"
         )
 
         # Extract text from the message.
@@ -353,12 +353,12 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             direct_url = await fetch_direct_gif(url)
             if direct_url:
                 attachment_parts.append({"type": "image_url", "image_url": {"url": direct_url}})
-                logger.debug(f"🖼️ Added direct GIF URL {direct_url} from {url}")
+                logger.debug(f"Added direct GIF URL {direct_url} from {url}")
             else:
-                logger.debug(f"⚠️ Could not resolve a direct GIF URL for {url}")
+                logger.debug(f"Could not resolve a direct GIF URL for {url}")
 
         if attachment_parts:
-            logger.debug(f"📸 Message {message.id} contains {len(attachment_parts)} attachment(s) or resolved URLs.")
+            logger.debug(f"Message {message.id} contains {len(attachment_parts)} attachment(s) or resolved URLs.")
 
         # Build the conversation payload.
         conversation = [
@@ -379,14 +379,14 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
             return
 
-        logger.debug(f"🤖 AI response: {reply}")
+        logger.debug(f"AI response: {reply}")
 
         # Send the reply in chunks if it is too long.
         for i in range(0, len(reply), 2000):
             await ctx.send(reply[i: i + 2000])
 
     except Exception as e:
-        logger.exception(f"⚠️ Unexpected error in 'Analyze with ChatGPT' command: {e}")
+        logger.exception(f"Unexpected error in 'Analyze with ChatGPT' command: {e}")
         await ctx.send("⚠️ An unexpected error occurred.", ephemeral=True)
 
 # -------------------------
