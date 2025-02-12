@@ -57,7 +57,7 @@ missing_vars = [key for key, value in required_env_vars.items() if not value]
 if missing_vars:
     for var in missing_vars:
         logger.critical(f"{var} not found in environment variables.")
-    raise SystemExit(1)  # Terminates program after logging. Remove if undesired.
+    raise SystemExit(1)  # Terminates program after logging.
 
 TOKEN = required_env_vars["DISCORD_BOT_TOKEN"]
 OPENAI_API_KEY = required_env_vars["OPENAI_API_KEY"]
@@ -73,9 +73,11 @@ OPENAI_MAX_CONCURRENT = 3
 openai_semaphore = asyncio.Semaphore(OPENAI_MAX_CONCURRENT)
 
 # -------------------------
-# Conversation History per Channel
+# Per-User Conversation Histories
+#   Keyed by (channel_id, user_id).
+#   Each value is a deque of messages.
 # -------------------------
-channel_message_history = defaultdict(lambda: deque(maxlen=10))
+user_channel_history = defaultdict(lambda: deque(maxlen=10))
 
 # -------------------------
 # Discord Bot Setup
@@ -118,10 +120,8 @@ async def shutdown():
     Coroutine to shut down the bot and close resources.
     """
     logger.info("Shutting down the bot...")
-    # Close the HTTP session
-    await close_http_session()
-    # Stop the bot (disconnects from Discord)
-    await bot._http.close()  # or bot.stop() if needed
+    await close_http_session()       # Close the HTTP session
+    await bot._http.close()          # Cleanly stop interactions.py internal HTTP
     logger.info("Bot shutdown complete. Exiting.")
     sys.exit(0)
 
@@ -192,7 +192,6 @@ async def fetch_direct_gif(url: str) -> str:
     """
     global session
     if session is None:
-        # Create the session if it doesn't exist (should be created on_ready, but just in case)
         await create_http_session()
 
     try:
@@ -224,9 +223,7 @@ async def fetch_direct_gif(url: str) -> str:
 @interactions.listen()
 async def on_ready():
     """Triggered when the bot successfully connects to Discord."""
-    # Ensure our session is created
     await create_http_session()
-
     await bot.change_presence(
         status=interactions.Status.ONLINE,
         activity=interactions.Activity(
@@ -245,7 +242,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
           * the bot is mentioned,
           * an image is attached, or
           * the user is replying to one of the bot's messages.
-      - Maintains conversation history per channel.
+      - Maintains per-user conversation history in each channel.
       - Logs user prompts.
     """
     try:
@@ -277,13 +274,15 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             return
 
         # Only handle the message if:
-        #   - The bot is mentioned
-        #   - The message has image attachments
-        #   - The message is a reply to a bot's message
+        #   - The bot is mentioned,
+        #   - The message has image attachments,
+        #   - The message is a reply to a bot's message.
         if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
             return
-        elif bot_mention in message.content:
-            message.channel.trigger_typing()
+        else:
+            # Trigger typing indicator if the bot is directly mentioned
+            if bot_mention in message.content:
+                message.channel.trigger_typing()
 
         logger.debug(f"Bot triggered by message {message.id} in channel {channel_id}.")
 
@@ -293,19 +292,20 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             f"User '{message.author.username}' (ID: {user_id}) in channel {channel_id}: {user_text}"
         )
 
+        # Build user's content parts
         image_urls = [
             attachment.url
             for attachment in message.attachments
             if attachment.content_type and attachment.content_type.startswith("image/")
         ]
-
         user_message_parts = [{"type": "text", "text": user_text}]
         for url in image_urls:
             user_message_parts.append({"type": "image_url", "image_url": {"url": url}})
 
-        # Retrieve and build the conversation history
-        conversation_history = channel_message_history[channel_id]
-        conversation = list(conversation_history)
+        # Retrieve and build the conversation history for this user in this channel
+        key = (channel_id, user_id)
+        conversation_deque = user_channel_history[key]
+        conversation = list(conversation_deque)
 
         # If no system message yet, add it
         if not conversation or conversation[0].get("role") != "system":
@@ -320,14 +320,14 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
                 },
             )
 
-        # Optionally include the referenced message if the user is replying to the bot
+        # Optionally include the referenced bot message if the user is replying to the bot
         if is_reply_to_bot and referenced_message:
             conversation.append({"role": "assistant", "content": referenced_message.content})
 
         # Append the new user message
         conversation.append({"role": "user", "content": user_message_parts})
 
-        # Get AI-generated reply
+        # Generate AI response
         reply = await generate_ai_response(conversation, message.channel)
         if not reply:
             await message.channel.send("⚠️ I couldn't generate a response.", reply_to=message.id)
@@ -337,9 +337,9 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         for i in range(0, len(reply), 2000):
             await message.channel.send(reply[i : i + 2000], reply_to=message.id)
 
-        # Update conversation history
-        conversation_history.append({"role": "user", "content": user_message_parts})
-        conversation_history.append({"role": "assistant", "content": reply})
+        # Update conversation history in the deque
+        conversation_deque.append({"role": "user", "content": user_message_parts})
+        conversation_deque.append({"role": "assistant", "content": reply})
 
     except Exception as e:
         logger.exception(f"Unexpected error in on_message_create: {e}")
@@ -347,10 +347,10 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
 # -------------------------
 # Slash Commands
 # -------------------------
-@interactions.slash_command(name="reset", description="Reset the entire conversation history.")
+@interactions.slash_command(name="reset", description="Reset all per-user conversation history globally.")
 async def reset(ctx: interactions.ComponentContext):
     """
-    Resets the entire conversation history for all channels globally.
+    Resets *all* per-user conversation histories in every channel.
     Only admins can use this command.
     """
     if not ctx.author.has_permission(interactions.Permissions.ADMINISTRATOR):
@@ -359,12 +359,12 @@ async def reset(ctx: interactions.ComponentContext):
         return
 
     try:
-        channel_message_history.clear()
-        logger.info(f"Conversation history reset by {ctx.author.username} ({ctx.author.id})")
-        await ctx.send("🗑️ **Global conversation history has been reset.**", ephemeral=True)
+        user_channel_history.clear()
+        logger.info(f"Conversation histories reset by {ctx.author.username} ({ctx.author.id})")
+        await ctx.send("🗑️ **All per-user conversation histories have been reset.**", ephemeral=True)
     except Exception as e:
         logger.exception(f"Error in /reset command: {e}")
-        await ctx.send("⚠️ An error occurred while resetting the conversation history.", ephemeral=True)
+        await ctx.send("⚠️ An error occurred while resetting.", ephemeral=True)
 
 # -------------------------
 # Context Menu Command
@@ -373,21 +373,23 @@ async def reset(ctx: interactions.ComponentContext):
 async def analyze_message(ctx: interactions.ContextMenuContext):
     """
     Allows users to right-click a message -> 'Apps' -> 'Analyze with ChatGPT'.
-    It analyzes the selected message (including text, images, Tenor/Giphy URLs).
+    Uses per-user conversation history for the user who invoked the context menu.
     """
     try:
-        message: interactions.Message = ctx.target  # The selected message.
+        message: interactions.Message = ctx.target  # The selected message
         if not message:
             await ctx.send("❌ Could not retrieve the message.", ephemeral=True)
             return
 
         channel_id = message.channel.id
+        user_id = ctx.author.id  # The user who invoked this command
+
         logger.debug(
             f"User '{ctx.author.username}' (ID: {ctx.author.id}) requested analysis "
             f"for message {message.id} in channel {channel_id}"
         )
 
-        # Extract text
+        # Extract text from the target message
         message_text = message.content or "📜 No text found in message."
 
         # Extract attachments
@@ -400,7 +402,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
 
-        # Check for Tenor/Giphy
+        # Check for Tenor/Giphy URLs
         tenor_giphy_pattern = r"(https?://(?:tenor\.com|giphy\.com)/\S+)"
         urls = re.findall(tenor_giphy_pattern, message_text)
         # Run all fetches concurrently
@@ -418,9 +420,10 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         user_message_parts = [{"type": "text", "text": message_text}]
         user_message_parts.extend(attachment_parts)
 
-        # Get conversation history
-        conversation_history = channel_message_history[channel_id]
-        conversation = list(conversation_history)
+        # Retrieve or create per-user conversation history in this channel
+        key = (channel_id, user_id)
+        conversation_deque = user_channel_history[key]
+        conversation = list(conversation_deque)
 
         # Insert system message if none
         if not conversation or conversation[0].get("role") != "system":
@@ -441,6 +444,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         # Defer to allow processing time
         await ctx.defer()
 
+        # Generate the AI response
         reply = await generate_ai_response(conversation, ctx.channel)
         if not reply:
             await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
@@ -450,9 +454,9 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         for i in range(0, len(reply), 2000):
             await ctx.send(reply[i : i + 2000])
 
-        # Update conversation history
-        conversation_history.append({"role": "user", "content": user_message_parts})
-        conversation_history.append({"role": "assistant", "content": reply})
+        # Update conversation deque
+        conversation_deque.append({"role": "user", "content": user_message_parts})
+        conversation_deque.append({"role": "assistant", "content": reply})
 
     except Exception as e:
         logger.exception(f"Unexpected error in 'Analyze with ChatGPT' command: {e}")
@@ -463,8 +467,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 # -------------------------
 if __name__ == "__main__":
     try:
-        # Start the bot (blocks until closed)
-        bot.start(TOKEN)
+        bot.start(TOKEN)  # Blocks until closed
     except Exception:
         logger.error("Exception occurred during bot startup!", exc_info=True)
         sys.exit(1)
