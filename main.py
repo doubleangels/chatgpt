@@ -320,7 +320,8 @@ async def reset(ctx: interactions.ComponentContext):
 async def analyze_message(ctx: interactions.ContextMenuContext):
     """
     Allows users to right-click a message, select 'Apps', and analyze it with GPT-4o-mini.
-    This version analyzes text, images, videos, and logs voice messages (audio attachments).
+    This updated version also analyzes photos, videos, and GIFs attached to the message.
+    Additionally, it checks for Tenor/Giphy URLs in the message content and attempts to extract the direct GIF URL.
     """
     try:
         message: interactions.Message = ctx.target  # The selected message.
@@ -345,16 +346,11 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
                 attachment_parts.append({"type": "image_url", "image_url": {"url": attachment.url}})
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
-            elif attachment.content_type.startswith("audio/"):
-                # For now, just log the audio file URL.
-                logger.debug(f"Audio attachment found: {attachment.url}")
-                # If needed later, you can add this URL to your conversation payload.
-                # Example: attachment_parts.append({"type": "audio_url", "audio_url": {"url": attachment.url}})
 
         # Check message text for Tenor or Giphy URLs and resolve direct GIF URLs.
         tenor_giphy_pattern = r"(https?://(?:tenor\.com|giphy\.com)/\S+)"
         for url in re.findall(tenor_giphy_pattern, message_text):
-            direct_url = await fetch_direct_gif(url)  # Ensure this function is defined elsewhere.
+            direct_url = await fetch_direct_gif(url)
             if direct_url:
                 attachment_parts.append({"type": "image_url", "image_url": {"url": direct_url}})
                 logger.debug(f"Added direct GIF URL {direct_url} from {url}")
@@ -368,7 +364,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         conversation = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant that can analyze text, images, videos, and audio."
+                "content": "You are a helpful assistant that can analyze text, images, videos, and GIFs."
             }
         ]
         user_message_parts = [{"type": "text", "text": message_text}]
@@ -378,7 +374,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         # Defer the context menu response to allow processing time.
         await ctx.defer()
 
-        reply = await generate_ai_response(conversation, ctx.channel)  # Ensure this function is defined.
+        reply = await generate_ai_response(conversation, ctx.channel)
         if not reply:
             await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
             return
