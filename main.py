@@ -1,3 +1,4 @@
+import asyncio
 import html.parser
 import logging
 import os
@@ -7,6 +8,7 @@ import sys
 from collections import defaultdict, deque
 
 import aiohttp
+import async_timeout
 import interactions
 import openai
 import sentry_sdk
@@ -16,7 +18,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 # Sentry Setup with Logging Integration
 # -------------------------
 sentry_logging = LoggingIntegration(
-    level=logging.DEBUG,        # Capture info and above as breadcrumbs
+    level=logging.DEBUG,        # Capture debug and above as breadcrumbs
     event_level=logging.ERROR   # Send errors as events
 )
 
@@ -54,9 +56,8 @@ required_env_vars = {
 missing_vars = [key for key, value in required_env_vars.items() if not value]
 if missing_vars:
     for var in missing_vars:
-        # Log at CRITICAL level, then optionally raise SystemExit (or remove if you don’t want to exit).
         logger.critical(f"{var} not found in environment variables.")
-    raise SystemExit(1)  # Terminates program after logging. Remove if you do not want to exit.
+    raise SystemExit(1)  # Terminates program after logging. Remove if undesired.
 
 TOKEN = required_env_vars["DISCORD_BOT_TOKEN"]
 OPENAI_API_KEY = required_env_vars["OPENAI_API_KEY"]
@@ -66,6 +67,10 @@ OPENAI_API_KEY = required_env_vars["OPENAI_API_KEY"]
 # -------------------------
 openai.api_key = OPENAI_API_KEY
 MODEL_NAME = "gpt-4o-mini"
+
+# Limit how many concurrent OpenAI calls can happen at once:
+OPENAI_MAX_CONCURRENT = 3
+openai_semaphore = asyncio.Semaphore(OPENAI_MAX_CONCURRENT)
 
 # -------------------------
 # Conversation History per Channel
@@ -78,15 +83,47 @@ channel_message_history = defaultdict(lambda: deque(maxlen=10))
 bot = interactions.Client(token=TOKEN, sync_commands=True)
 
 # -------------------------
+# Global aiohttp Session
+# -------------------------
+session: aiohttp.ClientSession | None = None
+
+async def create_http_session():
+    """Create a global aiohttp session if not already created."""
+    global session
+    if session is None:
+        session = aiohttp.ClientSession()
+        logger.info("Global aiohttp session created.")
+
+async def close_http_session():
+    """Close the global aiohttp session."""
+    global session
+    if session is not None:
+        await session.close()
+        session = None
+        logger.info("Global aiohttp session closed.")
+
+# -------------------------
 # Graceful Shutdown Handling
 # -------------------------
 def handle_interrupt(signal_num, frame):
     """
-    Handles shutdown signals (SIGINT, SIGTERM) gracefully.
-    Logs a info message and (optionally) stops execution.
+    Handle SIGINT/SIGTERM: schedule a graceful shutdown.
     """
-    logger.info("Shutdown signal received. Cleaning up and shutting down gracefully.")
-    raise SystemExit(0)
+    logger.info("Received shutdown signal, scheduling graceful shutdown.")
+    loop = asyncio.get_event_loop()
+    loop.create_task(shutdown())
+
+async def shutdown():
+    """
+    Coroutine to shut down the bot and close resources.
+    """
+    logger.info("Shutting down the bot...")
+    # Close the HTTP session
+    await close_http_session()
+    # Stop the bot (disconnects from Discord)
+    await bot._http.close()  # or bot.stop() if needed
+    logger.info("Bot shutdown complete. Exiting.")
+    sys.exit(0)
 
 signal.signal(signal.SIGINT, handle_interrupt)
 signal.signal(signal.SIGTERM, handle_interrupt)
@@ -98,30 +135,32 @@ async def generate_ai_response(conversation: list, channel) -> str:
     """
     Sends the conversation payload to OpenAI and returns the reply.
     Logs both the input and output for debugging.
+    Enforces concurrency limit with a semaphore.
     """
-    try:
-        logger.debug(f"Sending conversation payload to OpenAI: {conversation}")
+    async with openai_semaphore:
+        try:
+            logger.debug(f"Sending conversation payload to OpenAI: {conversation}")
 
-        response = openai.chat.completions.create(
-            model=MODEL_NAME,
-            messages=conversation,
-            max_tokens=500,
-            temperature=0.7,
-        )
+            response = openai.chat.completions.create(
+                model=MODEL_NAME,
+                messages=conversation,
+                max_tokens=500,
+                temperature=0.7,
+            )
 
-        logger.debug(f"Received response from OpenAI: {response}")
+            logger.debug(f"Received response from OpenAI: {response}")
 
-        if not response.choices:
-            logger.warning("OpenAI API returned no choices.")
+            if not response.choices:
+                logger.warning("OpenAI API returned no choices.")
+                return ""
+
+            reply = response.choices[0].message.content
+            logger.debug(f"Final reply from OpenAI: {reply}")
+            return reply
+
+        except Exception as e:
+            logger.exception(f"Exception during AI response generation: {e}")
             return ""
-
-        reply = response.choices[0].message.content
-        logger.debug(f"Final reply from OpenAI: {reply}")
-        return reply
-
-    except Exception as e:
-        logger.exception(f"Exception occurred during AI response generation: {e}")
-        return ""
 
 # -------------------------
 # OG Image Extractor
@@ -147,13 +186,26 @@ def extract_og_image(html_text: str) -> str:
     return parser.og_image
 
 async def fetch_direct_gif(url: str) -> str:
+    """
+    Fetches the page at `url` and attempts to extract a direct GIF URL from the OG metadata.
+    Uses the global session. Adds a timeout for safety.
+    """
+    global session
+    if session is None:
+        # Create the session if it doesn't exist (should be created on_ready, but just in case)
+        await create_http_session()
+
     try:
-        async with aiohttp.ClientSession() as session:
+        # Use a 10-second timeout for the request
+        async with async_timeout.timeout(10):
             async with session.get(url) as response:
                 if response.status != 200:
                     logger.warning(f"Failed to retrieve URL {url} (status {response.status})")
                     return None
                 html_text = await response.text()
+    except asyncio.TimeoutError:
+        logger.warning(f"Timeout fetching URL {url}")
+        return None
     except Exception as e:
         logger.exception(f"Error fetching URL {url}: {e}")
         return None
@@ -172,6 +224,9 @@ async def fetch_direct_gif(url: str) -> str:
 @interactions.listen()
 async def on_ready():
     """Triggered when the bot successfully connects to Discord."""
+    # Ensure our session is created
+    await create_http_session()
+
     await bot.change_presence(
         status=interactions.Status.ONLINE,
         activity=interactions.Activity(
@@ -186,7 +241,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
     """
     Handles incoming messages:
       - Ignores the bot's own messages.
-      - Responds with GPT-4 if:
+      - Responds with GPT if:
           * the bot is mentioned,
           * an image is attached, or
           * the user is replying to one of the bot's messages.
@@ -278,7 +333,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             await message.channel.send("⚠️ I couldn't generate a response.", reply_to=message.id)
             return
 
-        # Send the reply (in chunks if too long)
+        # Send the reply in chunks if it's too long
         for i in range(0, len(reply), 2000):
             await message.channel.send(reply[i : i + 2000], reply_to=message.id)
 
@@ -294,6 +349,10 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
 # -------------------------
 @interactions.slash_command(name="reset", description="Reset the entire conversation history.")
 async def reset(ctx: interactions.ComponentContext):
+    """
+    Resets the entire conversation history for all channels globally.
+    Only admins can use this command.
+    """
     if not ctx.author.has_permission(interactions.Permissions.ADMINISTRATOR):
         logger.warning(f"Unauthorized /reset attempt by {ctx.author.username} ({ctx.author.id})")
         await ctx.send("❌ You do not have permission to use this command.", ephemeral=True)
@@ -312,6 +371,10 @@ async def reset(ctx: interactions.ComponentContext):
 # -------------------------
 @interactions.message_context_menu(name="Analyze with ChatGPT")
 async def analyze_message(ctx: interactions.ContextMenuContext):
+    """
+    Allows users to right-click a message -> 'Apps' -> 'Analyze with ChatGPT'.
+    It analyzes the selected message (including text, images, Tenor/Giphy URLs).
+    """
     try:
         message: interactions.Message = ctx.target  # The selected message.
         if not message:
@@ -339,8 +402,15 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 
         # Check for Tenor/Giphy
         tenor_giphy_pattern = r"(https?://(?:tenor\.com|giphy\.com)/\S+)"
-        for url in re.findall(tenor_giphy_pattern, message_text):
-            direct_url = await fetch_direct_gif(url)
+        urls = re.findall(tenor_giphy_pattern, message_text)
+        # Run all fetches concurrently
+        tasks = [fetch_direct_gif(u) for u in urls]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for url, direct_url in zip(urls, results):
+            if isinstance(direct_url, Exception):
+                logger.exception(f"Failed to fetch GIF from {url}: {direct_url}")
+                continue
             if direct_url:
                 attachment_parts.append({"type": "image_url", "image_url": {"url": direct_url}})
                 logger.debug(f"Added direct GIF URL {direct_url} from {url}")
@@ -368,6 +438,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         # Append user's new analysis request
         conversation.append({"role": "user", "content": user_message_parts})
 
+        # Defer to allow processing time
         await ctx.defer()
 
         reply = await generate_ai_response(conversation, ctx.channel)
@@ -375,6 +446,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
             return
 
+        # Send the reply in chunks if too long
         for i in range(0, len(reply), 2000):
             await ctx.send(reply[i : i + 2000])
 
@@ -389,8 +461,10 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 # -------------------------
 # Bot Startup
 # -------------------------
-try:
-    bot.start(TOKEN)
-except Exception:
-    logger.critical("Exception occurred during bot startup!", exc_info=True)
-    raise SystemExit(1)
+if __name__ == "__main__":
+    try:
+        # Start the bot (blocks until closed)
+        bot.start(TOKEN)
+    except Exception:
+        logger.error("Exception occurred during bot startup!", exc_info=True)
+        sys.exit(1)
