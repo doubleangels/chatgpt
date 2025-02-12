@@ -83,10 +83,9 @@ bot = interactions.Client(token=TOKEN, sync_commands=True)
 def handle_interrupt(signal_num, frame):
     """
     Handles shutdown signals (SIGINT, SIGTERM) gracefully.
-    Logs a critical message and (optionally) stops execution.
+    Logs a info message and (optionally) stops execution.
     """
-    logger.critical("Shutdown signal received. Cleaning up and shutting down gracefully.")
-    # If you still want to terminate the process, do so here:
+    logger.info("Shutdown signal received. Cleaning up and shutting down gracefully.")
     raise SystemExit(0)
 
 signal.signal(signal.SIGINT, handle_interrupt)
@@ -394,5 +393,4 @@ try:
     bot.start(TOKEN)
 except Exception:
     logger.critical("Exception occurred during bot startup!", exc_info=True)
-    # Optionally raise SystemExit to terminate after logging:
     raise SystemExit(1)
