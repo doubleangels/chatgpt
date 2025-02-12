@@ -4,6 +4,8 @@ import os
 import re
 import signal
 import sys
+import asyncio
+import tempfile
 from collections import defaultdict, deque
 
 import aiohttp
@@ -126,6 +128,9 @@ async def generate_ai_response(conversation: list, channel) -> str:
         logger.exception(f"Exception occurred during AI response generation: {e}")
         return ""
 
+# -------------------------
+# Helper Classes and Functions for Media Extraction
+# -------------------------
 class OGImageParser(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
@@ -174,6 +179,36 @@ async def fetch_direct_gif(url: str) -> str:
     
     return direct_url
 
+async def transcribe_audio(url: str) -> str:
+    """
+    Fetches the audio file from the given URL, and uses OpenAI's Whisper model to transcribe it.
+    Returns the transcribed text if successful, or None otherwise.
+    """
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    logger.warning(f"Failed to retrieve audio URL {url} (status {response.status})")
+                    return None
+                audio_data = await response.read()
+
+        # Write the audio data to a temporary file.
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+            tmp.write(audio_data)
+            tmp_filename = tmp.name
+
+        # Use OpenAI's Whisper API to transcribe the audio.
+        with open(tmp_filename, "rb") as audio_file:
+            transcript_result = await asyncio.to_thread(openai.Audio.transcribe, "whisper-1", audio_file)
+        os.remove(tmp_filename)
+        transcript_text = transcript_result.get("text", "")
+        logger.debug(f"Transcribed audio from {url}: {transcript_text}")
+        return transcript_text
+
+    except Exception as e:
+        logger.exception(f"Error transcribing audio from {url}: {e}")
+        return None
+
 # -------------------------
 # Event Listeners
 # -------------------------
@@ -196,7 +231,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
       - Ignores the bot's own messages.
       - Responds with GPT-4o-mini if:
           * the bot is mentioned,
-          * an image is attached, or
+          * an image or audio is attached, or
           * the user is replying to one of the bot's messages.
       - Maintains conversation history per channel.
       - Logs user prompts.
@@ -229,7 +264,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
 
         # Process the message if:
         #   - The bot is mentioned,
-        #   - The message has image attachments,
+        #   - The message has image or audio attachments,
         #   - The message is a reply to a bot's message.
         if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
             return
@@ -244,18 +279,27 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             f"User '{message.author.username}' (ID: {message.author.id}) sent a message in channel {channel_id}: {message_formatted}"
         )
 
-        # Extract image URLs from attachments, if any.
+        # Extract image URLs from attachments.
         image_urls = [
             attachment.url
             for attachment in message.attachments
             if attachment.content_type and attachment.content_type.startswith("image/")
         ]
-        if image_urls:
-            logger.debug(f"User '{message.author.username}' uploaded {len(image_urls)} image(s).")
+
+        # Extract and transcribe audio attachments.
+        audio_transcripts = []
+        for attachment in message.attachments:
+            if attachment.content_type and attachment.content_type.startswith("audio/"):
+                transcript = await transcribe_audio(attachment.url)
+                if transcript:
+                    audio_transcripts.append(transcript)
+                    logger.debug(f"Transcribed audio from attachment {attachment.url}")
+                else:
+                    logger.warning(f"Could not transcribe audio from attachment {attachment.url}")
 
         # Build the conversation payload.
         conversation = [
-            {"role": "system", "content": "You are a helpful assistant that can analyze images and respond accordingly."}
+            {"role": "system", "content": "You are a helpful assistant that can analyze images, audio, and respond accordingly."}
         ]
 
         # If the user is replying to a bot message, include that message for context.
@@ -263,11 +307,16 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             conversation.append({"role": "assistant", "content": referenced_message.content})
 
         # Prepare the user's message parts.
-        user_message_parts = [{"type": "text", "text": message.content}]
+        user_message_parts = []
+        if message.content:
+            user_message_parts.append({"type": "text", "text": message.content.replace(bot_mention, "@ChatGPT")})
         if image_urls:
             user_message_parts.extend(
                 [{"type": "image_url", "image_url": {"url": url}} for url in image_urls]
             )
+        if audio_transcripts:
+            for transcript in audio_transcripts:
+                user_message_parts.append({"type": "text", "text": f"Voice message transcript: {transcript}"})
 
         conversation.append({"role": "user", "content": user_message_parts})
 
@@ -280,7 +329,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
 
         logger.debug(f"AI response to {message.author.username}: {reply}")
 
-        # Send the reply as a reply to the original message
+        # Send the reply as a reply to the original message.
         for i in range(0, len(reply), 2000):
             await message.channel.send(reply[i: i + 2000], reply_to=message.id)
 
@@ -320,7 +369,7 @@ async def reset(ctx: interactions.ComponentContext):
 async def analyze_message(ctx: interactions.ContextMenuContext):
     """
     Allows users to right-click a message, select 'Apps', and analyze it with GPT-4o-mini.
-    This updated version also analyzes photos, videos, and GIFs attached to the message.
+    This updated version also analyzes photos, videos, voice messages, and GIFs attached to the message.
     Additionally, it checks for Tenor/Giphy URLs in the message content and attempts to extract the direct GIF URL.
     """
     try:
@@ -337,7 +386,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         # Extract text from the message.
         message_text = message.content or "📜 No text found in message."
 
-        # Extract attachments: images (including GIFs) and videos.
+        # Extract attachments: images, videos, and audio.
         attachment_parts = []
         for attachment in message.attachments:
             if not attachment.content_type:
@@ -346,6 +395,13 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
                 attachment_parts.append({"type": "image_url", "image_url": {"url": attachment.url}})
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
+            elif attachment.content_type.startswith("audio/"):
+                transcript = await transcribe_audio(attachment.url)
+                if transcript:
+                    attachment_parts.append({"type": "text", "text": f"Voice message transcript: {transcript}"})
+                    logger.debug(f"Added audio transcript from {attachment.url}")
+                else:
+                    logger.warning(f"Could not transcribe audio from {attachment.url}")
 
         # Check message text for Tenor or Giphy URLs and resolve direct GIF URLs.
         tenor_giphy_pattern = r"(https?://(?:tenor\.com|giphy\.com)/\S+)"
@@ -364,11 +420,11 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         conversation = [
             {
                 "role": "system",
-                "content": "You are a helpful assistant that can analyze text, images, videos, and GIFs."
+                "content": "You are a helpful assistant that can analyze text, images, videos, and voice messages."
             }
         ]
         user_message_parts = [{"type": "text", "text": message_text}]
-        user_message_parts.extend(attachment_parts)  # Append extracted attachments.
+        user_message_parts.extend(attachment_parts)  # Append extracted attachments and transcripts.
         conversation.append({"role": "user", "content": user_message_parts})
 
         # Defer the context menu response to allow processing time.
