@@ -2,6 +2,7 @@ import asyncio
 import html.parser
 import logging
 import os
+import random
 import re
 import signal
 import sys
@@ -57,7 +58,7 @@ missing_vars = [key for key, value in required_env_vars.items() if not value]
 if missing_vars:
     for var in missing_vars:
         logger.critical(f"{var} not found in environment variables.")
-    raise SystemExit(1)  # Terminates program after logging.
+    raise SystemExit(1)
 
 TOKEN = required_env_vars["DISCORD_BOT_TOKEN"]
 OPENAI_API_KEY = required_env_vars["OPENAI_API_KEY"]
@@ -74,8 +75,6 @@ openai_semaphore = asyncio.Semaphore(OPENAI_MAX_CONCURRENT)
 
 # -------------------------
 # Per-User Conversation Histories
-#   Keyed by (channel_id, user_id).
-#   Each value is a deque of messages.
 # -------------------------
 user_channel_history = defaultdict(lambda: deque(maxlen=10))
 
@@ -120,13 +119,98 @@ async def shutdown():
     Coroutine to shut down the bot and close resources.
     """
     logger.info("Shutting down the bot...")
-    await close_http_session()       # Close the HTTP session
+    await close_http_session()       # Close HTTP session
     await bot._http.close()          # Cleanly stop interactions.py internal HTTP
     logger.info("Bot shutdown complete. Exiting.")
     sys.exit(0)
 
 signal.signal(signal.SIGINT, handle_interrupt)
 signal.signal(signal.SIGTERM, handle_interrupt)
+
+# -------------------------
+# Retry Logic: OpenAI Calls
+# -------------------------
+import openai.error
+
+async def openai_call_with_retries(payload, retries=3, base_delay=2):
+    """
+    Calls the OpenAI API with retry logic, handling RateLimitError specifically.
+    Exponential backoff with jitter for rate-limits.
+    """
+    for attempt in range(retries):
+        try:
+            response = openai.chat.completions.create(**payload)
+            return response
+        except openai.error.RateLimitError as e:
+            if attempt == retries - 1:
+                logger.error("Max retries reached for RateLimitError, re-raising.")
+                raise
+            wait_time = base_delay * (2 ** attempt) + random.uniform(0, 1)
+            logger.warning(
+                f"Rate-limited by OpenAI (attempt {attempt+1}/{retries}), "
+                f"retrying in {wait_time:.1f}s..."
+            )
+            await asyncio.sleep(wait_time)
+        except openai.error.OpenAIError as e:
+            # Could be APIError, ServiceUnavailableError, etc.
+            if attempt == retries - 1:
+                logger.error("Max retries reached for OpenAIError, re-raising.")
+                raise
+            wait_time = base_delay * (2 ** attempt)
+            logger.warning(
+                f"OpenAIError (attempt {attempt+1}/{retries}): {e}. Retrying in {wait_time}s..."
+            )
+            await asyncio.sleep(wait_time)
+        except Exception as e:
+            # Generic exception - optionally handle differently
+            if attempt == retries - 1:
+                logger.error("Max retries reached for unknown error, re-raising.")
+                raise
+            wait_time = base_delay
+            logger.warning(f"Exception: {e} - retrying in {wait_time}s...")
+            await asyncio.sleep(wait_time)
+    return None  # Should not reach here if we always raise at the last attempt
+
+# -------------------------
+# Retry Logic: HTTP Fetches (Tenor/Giphy)
+# -------------------------
+async def fetch_url_with_retries(url, retries=3, base_delay=2):
+    """
+    Attempts to fetch the given URL up to `retries` times with exponential backoff on failure.
+    Returns the text content if successful, or None after all retries fail.
+    """
+    global session
+    if session is None:
+        await create_http_session()
+
+    for attempt in range(retries):
+        try:
+            async with async_timeout.timeout(10):
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        return await response.text()
+                    else:
+                        raise ValueError(
+                            f"Non-OK status {response.status} for URL {url}"
+                        )
+        except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as e:
+            if attempt == retries - 1:
+                logger.error(f"Fetch max retries reached. Last error: {e}")
+                return None
+            wait_time = base_delay * (2 ** attempt) + random.uniform(0, 1)
+            logger.warning(
+                f"Failed to fetch URL {url} (attempt {attempt+1}/{retries}): {e}. "
+                f"Retrying in {wait_time:.1f}s..."
+            )
+            await asyncio.sleep(wait_time)
+        except Exception as e:
+            if attempt == retries - 1:
+                logger.error(f"Unexpected error after max retries: {e}")
+                return None
+            wait_time = base_delay
+            logger.warning(f"Exception: {e} - retrying in {wait_time}s...")
+            await asyncio.sleep(wait_time)
+    return None
 
 # -------------------------
 # Helper Function: Generate AI Response
@@ -136,22 +220,21 @@ async def generate_ai_response(conversation: list, channel) -> str:
     Sends the conversation payload to OpenAI and returns the reply.
     Logs both the input and output for debugging.
     Enforces concurrency limit with a semaphore.
+    Incorporates the openai_call_with_retries function.
     """
     async with openai_semaphore:
+        payload = {
+            "model": MODEL_NAME,
+            "messages": conversation,
+            "max_tokens": 500,
+            "temperature": 0.7,
+        }
         try:
             logger.debug(f"Sending conversation payload to OpenAI: {conversation}")
 
-            response = openai.chat.completions.create(
-                model=MODEL_NAME,
-                messages=conversation,
-                max_tokens=500,
-                temperature=0.7,
-            )
-
-            logger.debug(f"Received response from OpenAI: {response}")
-
-            if not response.choices:
-                logger.warning("OpenAI API returned no choices.")
+            response = await openai_call_with_retries(payload, retries=3, base_delay=2)
+            if not response or not response.choices:
+                logger.warning("OpenAI API returned no valid choices.")
                 return ""
 
             reply = response.choices[0].message.content
@@ -187,28 +270,16 @@ def extract_og_image(html_text: str) -> str:
 
 async def fetch_direct_gif(url: str) -> str:
     """
-    Fetches the page at `url` and attempts to extract a direct GIF URL from the OG metadata.
-    Uses the global session. Adds a timeout for safety.
+    Fetches the page at `url` with retry logic, then extracts the direct GIF URL from the OG metadata.
+    Returns the direct GIF URL if found, or None otherwise.
     """
-    global session
-    if session is None:
-        await create_http_session()
-
-    try:
-        # Use a 10-second timeout for the request
-        async with async_timeout.timeout(10):
-            async with session.get(url) as response:
-                if response.status != 200:
-                    logger.warning(f"Failed to retrieve URL {url} (status {response.status})")
-                    return None
-                html_text = await response.text()
-    except asyncio.TimeoutError:
-        logger.warning(f"Timeout fetching URL {url}")
-        return None
-    except Exception as e:
-        logger.exception(f"Error fetching URL {url}: {e}")
+    # We'll fetch the HTML with our retry function:
+    html_text = await fetch_url_with_retries(url, retries=3, base_delay=2)
+    if not html_text:
+        logger.warning(f"Giving up on fetching URL {url} after retries.")
         return None
 
+    # Extract the og:image URL from the HTML
     direct_url = extract_og_image(html_text)
     if direct_url:
         logger.debug(f"Extracted direct GIF URL {direct_url} from {url}")
@@ -274,13 +345,12 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             return
 
         # Only handle the message if:
-        #   - The bot is mentioned,
-        #   - The message has image attachments,
-        #   - The message is a reply to a bot's message.
+        #   - The bot is mentioned
+        #   - The message has image attachments
+        #   - The message is a reply to a bot's message
         if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
             return
         else:
-            # Trigger typing indicator if the bot is directly mentioned
             if bot_mention in message.content:
                 message.channel.trigger_typing()
 
@@ -374,6 +444,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
     """
     Allows users to right-click a message -> 'Apps' -> 'Analyze with ChatGPT'.
     Uses per-user conversation history for the user who invoked the context menu.
+    Includes retry logic for GIF URLs (Tenor/Giphy).
     """
     try:
         message: interactions.Message = ctx.target  # The selected message
@@ -382,7 +453,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             return
 
         channel_id = message.channel.id
-        user_id = ctx.author.id  # The user who invoked this command
+        user_id = ctx.author.id  # The user who invoked the context menu
 
         logger.debug(
             f"User '{ctx.author.username}' (ID: {ctx.author.id}) requested analysis "
@@ -454,7 +525,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         for i in range(0, len(reply), 2000):
             await ctx.send(reply[i : i + 2000])
 
-        # Update conversation deque
+        # Update conversation history
         conversation_deque.append({"role": "user", "content": user_message_parts})
         conversation_deque.append({"role": "assistant", "content": reply})
 
@@ -467,7 +538,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 # -------------------------
 if __name__ == "__main__":
     try:
-        bot.start(TOKEN)  # Blocks until closed
+        bot.start(TOKEN)
     except Exception:
         logger.error("Exception occurred during bot startup!", exc_info=True)
         sys.exit(1)
