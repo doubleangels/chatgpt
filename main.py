@@ -103,7 +103,7 @@ async def generate_ai_response(conversation: list, channel) -> str:
     try:
         logger.debug(f"Sending conversation payload to OpenAI: {conversation}")
 
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions(
             model=MODEL_NAME,
             messages=conversation,
             max_tokens=500,
