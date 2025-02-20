@@ -1,4 +1,4 @@
-# ChatGPT Discord Bot
+# chatgpt
 
 ![Logo](logo.png)
 
