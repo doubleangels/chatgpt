@@ -118,9 +118,50 @@ def handle_interrupt(signal_num, frame):
         loop.run_until_complete(aiohttp_session.close())
     sys.exit(0)
 
-# Register signal handlers for graceful shutdown
 signal.signal(signal.SIGINT, handle_interrupt)
 signal.signal(signal.SIGTERM, handle_interrupt)
+
+# -------------------------
+# Helper Function: Split Long Message
+# -------------------------
+def split_message(text: str, limit: int = 2000) -> list:
+    """
+    Splits the given text into chunks not exceeding the character limit.
+    Attempts to split at newline boundaries for better readability.
+
+    Args:
+        text (str): The full text to split.
+        limit (int): Maximum allowed characters per chunk (default 2000).
+
+    Returns:
+        list: A list of text chunks.
+    """
+    if len(text) <= limit:
+        return [text]
+    # Split by newline and build chunks
+    lines = text.split("\n")
+    chunks = []
+    current_chunk = ""
+    for line in lines:
+        # Check if adding this line would exceed limit
+        if len(current_chunk) + len(line) + 1 > limit:
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = line
+            else:
+                # If a single line is too long, hard split it
+                while len(line) > limit:
+                    chunks.append(line[:limit])
+                    line = line[limit:]
+                current_chunk = line
+        else:
+            if current_chunk:
+                current_chunk += "\n" + line
+            else:
+                current_chunk = line
+    if current_chunk:
+        chunks.append(current_chunk)
+    return chunks
 
 # -------------------------
 # Helper Function: Typing Indicator
@@ -380,8 +421,14 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             await message.channel.send("⚠️ I couldn't generate a response.", reply_to=message.id)
             return
 
-        # Send the generated reply to the channel
-        await message.channel.send(reply, reply_to=message.id)
+        # Split the reply into chunks if it's too long
+        chunks = split_message(reply)
+        for i, chunk in enumerate(chunks):
+            # Reply to the original message only on the first part
+            if i == 0:
+                await message.channel.send(chunk, reply_to=message.id)
+            else:
+                await message.channel.send(chunk)
 
         # Update the conversation history with the latest messages
         conversation_history.append({"role": "user", "content": user_message_parts})
@@ -439,7 +486,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         # Extract text content from the message
         message_text = message.content or "📜 No text found in message."
 
-        # Process attachments (images and videos)
+        # Process attachments (images and videos) in the message
         attachment_parts = []
         for attachment in message.attachments:
             if not attachment.content_type:
@@ -503,8 +550,13 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
             return
 
-        # Send the reply to the user
-        await ctx.send(reply, reply_to=message.id)
+        # Split and send the reply in chunks if it's too long
+        chunks = split_message(reply)
+        for i, chunk in enumerate(chunks):
+            if i == 0:
+                await ctx.send(chunk, reply_to=message.id)
+            else:
+                await ctx.send(chunk)
 
         # Update conversation history with the new messages
         conversation_history.append({"role": "user", "content": user_message_parts})
