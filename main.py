@@ -62,10 +62,9 @@ def handle_exception(e, context: str = ""):
         e (Exception): The exception that occurred.
         context (str): Additional context about where the exception occurred.
     """
-    # Create a detailed error message
     message = f"{context} - Exception: {e}"
-    logger.exception(message)  # Log the exception with traceback
-    sentry_sdk.capture_exception(e)  # Report the exception to Sentry
+    logger.exception(message)
+    sentry_sdk.capture_exception(e)
 
 # -------------------------
 # Environment Variable Check
@@ -75,14 +74,12 @@ required_env_vars = {
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY")
 }
 
-# Check if required environment variables are set
 missing_vars = [key for key, value in required_env_vars.items() if not value]
 if missing_vars:
     for var in missing_vars:
         logger.critical(f"{var} not found in environment variables.")
     sys.exit(1)
 
-# Assign tokens from environment variables
 TOKEN = required_env_vars["DISCORD_BOT_TOKEN"]
 OPENAI_API_KEY = required_env_vars["OPENAI_API_KEY"]
 
@@ -95,7 +92,7 @@ MODEL_NAME = "gpt-4o-mini"
 # -------------------------
 # Conversation History per Channel
 # -------------------------
-# Using a deque to maintain a fixed-length history per channel
+# Use a deque to maintain a fixed-length conversation history per channel
 channel_message_history = defaultdict(lambda: deque(maxlen=10))
 
 # -------------------------
@@ -116,7 +113,6 @@ def handle_interrupt(signal_num, frame):
     """
     logger.info("Shutdown signal received. Cleaning up and shutting down gracefully.")
     global aiohttp_session
-    # If the aiohttp session exists, close it before exiting
     if aiohttp_session:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(aiohttp_session.close())
@@ -125,6 +121,25 @@ def handle_interrupt(signal_num, frame):
 # Register signal handlers for graceful shutdown
 signal.signal(signal.SIGINT, handle_interrupt)
 signal.signal(signal.SIGTERM, handle_interrupt)
+
+# -------------------------
+# Helper Function: Typing Indicator
+# -------------------------
+async def typing_indicator(channel, interval=9):
+    """
+    Continuously triggers the typing indicator on a channel every 'interval' seconds.
+
+    Args:
+        channel: The Discord channel to trigger typing on.
+        interval (int): Number of seconds between each trigger.
+    """
+    try:
+        while True:
+            await channel.trigger_typing()
+            await asyncio.sleep(interval)
+    except asyncio.CancelledError:
+        # When the task is cancelled, exit gracefully
+        pass
 
 # -------------------------
 # Helper Function: Generate AI Response
@@ -141,9 +156,7 @@ async def generate_ai_response(conversation: list, channel) -> str:
         str: The AI-generated reply, or an empty string if generation fails.
     """
     try:
-        # Log the conversation payload for debugging
         logger.debug(f"Sending conversation payload to OpenAI: {conversation}")
-        # Call the OpenAI API for a chat completion
         response = openai.chat.completions.create(
             model=MODEL_NAME,
             messages=conversation,
@@ -152,18 +165,15 @@ async def generate_ai_response(conversation: list, channel) -> str:
         )
         logger.debug(f"Received response from OpenAI: {response}")
 
-        # Check if any choices were returned
         if not response.choices:
             logger.warning("OpenAI API returned no choices.")
             return ""
 
-        # Retrieve the content of the first choice
         reply = response.choices[0].message.content
         logger.debug(f"Final reply from OpenAI: {reply}")
         return reply
 
     except Exception as e:
-        # Handle any exceptions during API call
         handle_exception(e, "Error during AI response generation")
         return ""
 
@@ -189,10 +199,8 @@ class OGImageParser(html.parser.HTMLParser):
             tag (str): The HTML tag name.
             attrs (list): List of (attribute, value) tuples.
         """
-        # Check if the tag is a meta tag
         if tag.lower() == "meta":
             attr_dict = dict(attrs)
-            # If this meta tag is for og:image and contains content, store it
             if attr_dict.get("property") == "og:image" and "content" in attr_dict:
                 self.og_image = attr_dict["content"]
 
@@ -207,9 +215,7 @@ def extract_og_image(html_text: str) -> str:
         str: The URL found in the og:image meta tag, or None if not found.
     """
     parser = OGImageParser()
-    # Feed the HTML text to the parser
     parser.feed(html_text)
-    # Log and return the extracted URL if found
     if parser.og_image:
         logger.debug(f"Extracted OG image URL: {parser.og_image}")
     else:
@@ -228,21 +234,16 @@ async def fetch_direct_gif(url: str) -> str:
     """
     global aiohttp_session
     try:
-        # Make an asynchronous HTTP GET request using the shared session
         async with aiohttp_session.get(url) as response:
-            # Check for successful response
             if response.status != 200:
                 logger.warning(f"Failed to retrieve URL {url} (status {response.status}).")
                 return None
-            # Retrieve the response body as text
             html_text = await response.text()
     except Exception as e:
-        # Handle any exceptions during the fetch
         handle_exception(e, f"Error fetching URL {url}")
         return None
 
     try:
-        # Extract the direct URL from the fetched HTML
         direct_url = extract_og_image(html_text)
         if direct_url:
             logger.debug(f"Extracted direct GIF URL {direct_url} from {url}")
@@ -250,7 +251,6 @@ async def fetch_direct_gif(url: str) -> str:
             logger.warning(f"No OG image found for URL {url}")
         return direct_url
     except Exception as e:
-        # Handle any exceptions during extraction
         handle_exception(e, f"Error extracting OG image from URL {url}")
         return None
 
@@ -264,11 +264,9 @@ async def on_ready():
     Initializes the aiohttp session and sets the bot's presence.
     """
     global aiohttp_session
-    # Initialize the global aiohttp session if not already done.
     if aiohttp_session is None:
         aiohttp_session = aiohttp.ClientSession()
     try:
-        # Set the bot's status and activity
         await bot.change_presence(
             status=interactions.Status.ONLINE,
             activity=interactions.Activity(
@@ -291,9 +289,9 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
     try:
         message = event.message
         if not message:
-            return  # If no message, exit early
+            return
 
-        # Retrieve channel name if available; otherwise use channel ID as fallback
+        # Retrieve channel name if available; otherwise, use channel ID as fallback
         channel_name = getattr(message.channel, "name", f"Channel {message.channel.id}")
         bot_mention = f"<@{bot.user.id}>"
 
@@ -302,7 +300,6 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         referenced_message = None
         if message.message_reference and message.message_reference.message_id:
             try:
-                # Attempt to fetch the referenced message
                 referenced_message = await message.channel.fetch_message(
                     message.message_reference.message_id
                 )
@@ -318,33 +315,32 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         # or it is a reply to one of the bot's messages
         if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
             return
-        elif bot_mention in message.content:
-            # Trigger typing indicator when bot is mentioned
-            await message.channel.trigger_typing()
 
-        logger.debug(f"Bot triggered by message {message.id} in channel {channel_name}.")
+        # Trigger an initial typing indicator
+        await message.channel.trigger_typing()
+        logger.debug(f"Bot triggered by message {message.id} in channel {channel_name}")
 
-        # Remove the bot mention from the message text for cleaner processing
+        # Remove the bot mention from the text for cleaner processing
         user_text = message.content.replace(bot_mention, "@ChatGPT")
         logger.debug(f"User '{message.author.username}' in channel {channel_name}: {user_text}")
 
-        # Gather URLs for image attachments
+        # Gather image attachment URLs
         image_urls = [
             attachment.url
             for attachment in message.attachments
             if attachment.content_type and attachment.content_type.startswith("image/")
         ]
 
-        # Build user message parts from text and image URLs
+        # Build the user message parts from text and any image URLs
         user_message_parts = [{"type": "text", "text": user_text}]
         for url in image_urls:
             user_message_parts.append({"type": "image_url", "image_url": {"url": url}})
 
-        # Retrieve conversation history for this channel
+        # Retrieve conversation history for the channel
         conversation_history = channel_message_history[message.channel.id]
         conversation = list(conversation_history)
 
-        # Insert system message if not already present
+        # Insert system prompt if not already present
         if not conversation or conversation[0].get("role") != "system":
             conversation.insert(
                 0,
@@ -367,13 +363,24 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         # Append the new user message to the conversation history
         conversation.append({"role": "user", "content": user_message_parts})
 
-        # Generate an AI response based on the conversation history
-        reply = await generate_ai_response(conversation, message.channel)
+        # Start the typing indicator background task
+        typing_task = asyncio.create_task(typing_indicator(message.channel))
+        try:
+            # Generate the AI response
+            reply = await generate_ai_response(conversation, message.channel)
+        finally:
+            # Cancel the typing indicator once the response is ready
+            typing_task.cancel()
+            try:
+                await typing_task
+            except asyncio.CancelledError:
+                pass
+
         if not reply:
             await message.channel.send("⚠️ I couldn't generate a response.", reply_to=message.id)
             return
 
-        # Send the reply back to the channel
+        # Send the generated reply to the channel
         await message.channel.send(reply, reply_to=message.id)
 
         # Update the conversation history with the latest messages
@@ -381,7 +388,6 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         conversation_history.append({"role": "assistant", "content": reply})
 
     except Exception as e:
-        # If an error occurs, log it with the channel name
         channel_name = getattr(message.channel, "name", "Unknown Channel") if message else "Unknown Channel"
         handle_exception(e, f"Unexpected error in on_message_create (Channel: {channel_name})")
 
@@ -397,13 +403,11 @@ async def reset(ctx: interactions.ComponentContext):
         ctx: The context of the slash command.
     """
     try:
-        # Check if the user has administrator permissions
         if not ctx.author.has_permission(interactions.Permissions.ADMINISTRATOR):
             logger.warning(f"Unauthorized /reset attempt by {ctx.author.username}")
             await ctx.send("❌ You do not have permission to use this command.", ephemeral=True)
             return
 
-        # Clear all conversation history
         channel_message_history.clear()
         logger.info(f"Conversation history reset by {ctx.author.username}")
         await ctx.send("🗑️ **Global conversation history has been reset.**", ephemeral=True)
@@ -435,7 +439,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         # Extract text content from the message
         message_text = message.content or "📜 No text found in message."
 
-        # Process any attachments (images or videos) in the message
+        # Process attachments (images and videos)
         attachment_parts = []
         for attachment in message.attachments:
             if not attachment.content_type:
@@ -445,7 +449,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
 
-        # Use the precompiled regex to find Tenor/Giphy URLs in the message text
+        # Use precompiled regex to find Tenor/Giphy URLs in the message text
         for url in TENOR_GIPHY_PATTERN.findall(message_text):
             direct_url = await fetch_direct_gif(url)
             if direct_url:
@@ -476,19 +480,30 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
                 },
             )
 
-        # Append the user's analysis request to the conversation
+        # Append the user's analysis request to the conversation history
         conversation.append({"role": "user", "content": user_message_parts})
 
-        # Defer the response (useful for context menu commands)
+        # Defer the context menu response
         await ctx.defer()
 
-        # Generate a reply using the AI model
-        reply = await generate_ai_response(conversation, ctx.channel)
+        # Start a typing indicator task for this command
+        typing_task = asyncio.create_task(typing_indicator(ctx.channel))
+        try:
+            # Generate the AI response
+            reply = await generate_ai_response(conversation, ctx.channel)
+        finally:
+            # Cancel the typing indicator once done
+            typing_task.cancel()
+            try:
+                await typing_task
+            except asyncio.CancelledError:
+                pass
+
         if not reply:
             await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
             return
-        
-        # Send the reply back to the user
+
+        # Send the reply to the user
         await ctx.send(reply, reply_to=message.id)
 
         # Update conversation history with the new messages
