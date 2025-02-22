@@ -498,16 +498,12 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 # -------------------------
 async def shutdown(loop, signal=None):
     """
-    Cancels outstanding tasks, closes the aiohttp session, flushes Sentry,
-    and logs the shutdown.
+    Cancels outstanding tasks, closes the aiohttp session, and flushes Sentry.
     
     Args:
         loop: The current event loop.
         signal: Optional signal that triggered the shutdown.
     """
-    if signal:
-        logger.info(f"Received exit signal {signal.name}. Initiating shutdown...")
-    logger.info("Cancelling outstanding tasks")
     tasks = [task for task in asyncio.all_tasks(loop) if task is not asyncio.current_task(loop)]
     for task in tasks:
         task.cancel()
@@ -515,9 +511,7 @@ async def shutdown(loop, signal=None):
     global aiohttp_session
     if aiohttp_session:
         await aiohttp_session.close()
-    logger.info("Flushing Sentry events...")
     sentry_sdk.flush(timeout=2)
-    logger.info("Shutdown complete.")
 
 def handle_interrupt(signal, frame):
     """
@@ -541,7 +535,7 @@ async def main():
         logger.info("Starting the bot...")
         await bot.astart(TOKEN)
     except Exception as e:
-        handle_exception(e, "Exception occurred during bot startup")
+        handle_exception(e, "Exception occurred during bot startup!")
     finally:
         await shutdown(asyncio.get_event_loop())
 
