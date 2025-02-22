@@ -496,17 +496,17 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 # -------------------------
 # Graceful Shutdown Handling
 # -------------------------
-async def shutdown(loop, sig=None):
+async def shutdown(loop, signal=None):
     """
     Cancels outstanding tasks, closes the aiohttp session, flushes Sentry,
     and logs the shutdown.
     
     Args:
         loop: The current event loop.
-        sig: Optional signal that triggered the shutdown.
+        signal: Optional signal that triggered the shutdown.
     """
-    if sig:
-        logger.info(f"Received exit signal {sig.name}. Initiating shutdown...")
+    if signal:
+        logger.info(f"Received exit signal {signal.name}. Initiating shutdown...")
     logger.info("Cancelling outstanding tasks")
     tasks = [task for task in asyncio.all_tasks(loop) if task is not asyncio.current_task(loop)]
     for task in tasks:
@@ -519,16 +519,16 @@ async def shutdown(loop, sig=None):
     sentry_sdk.flush(timeout=2)
     logger.info("Shutdown complete.")
 
-def handle_interrupt(sig, frame):
+def handle_interrupt(signal, frame):
     """
     Synchronous signal handler that schedules the asynchronous shutdown.
     
     Args:
-        sig: The signal received.
+        signal: The signal received.
         frame: The current stack frame.
     """
     loop = asyncio.get_event_loop()
-    loop.create_task(shutdown(loop, sig))
+    loop.create_task(shutdown(loop, signal))
 
 signal.signal(signal.SIGINT, handle_interrupt)
 signal.signal(signal.SIGTERM, handle_interrupt)
