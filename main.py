@@ -103,20 +103,39 @@ bot = interactions.Client(token=TOKEN, sync_commands=True)
 # -------------------------
 # Graceful Shutdown Handling
 # -------------------------
-def handle_interrupt(signal_num, frame):
+async def shutdown(loop, sig=None):
     """
-    Handles shutdown signals and gracefully closes resources.
-
+    Cancels outstanding tasks, closes the aiohttp session, flushes Sentry,
+    and logs the shutdown.
+    
     Args:
-        signal_num: The signal number.
-        frame: The current stack frame.
+        loop: The current event loop.
+        sig: Optional signal that triggered the shutdown.
     """
-    logger.info("Shutdown signal received. Cleaning up and shutting down gracefully.")
+    if sig:
+        logger.info(f"Received exit signal {sig.name}. Initiating shutdown...")
+    logger.info("Cancelling outstanding tasks")
+    tasks = [task for task in asyncio.all_tasks(loop) if task is not asyncio.current_task(loop)]
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
     global aiohttp_session
     if aiohttp_session:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(aiohttp_session.close())
-    sys.exit(0)
+        await aiohttp_session.close()
+    logger.info("Flushing Sentry events...")
+    sentry_sdk.flush(timeout=2)
+    logger.info("Shutdown complete.")
+
+def handle_interrupt(sig, frame):
+    """
+    Synchronous signal handler that schedules the asynchronous shutdown.
+    
+    Args:
+        sig: The signal received.
+        frame: The current stack frame.
+    """
+    loop = asyncio.get_event_loop()
+    loop.create_task(shutdown(loop, sig))
 
 signal.signal(signal.SIGINT, handle_interrupt)
 signal.signal(signal.SIGTERM, handle_interrupt)
@@ -143,22 +162,17 @@ def split_message(text: str, limit: int = 2000) -> list:
     chunks = []
     current_chunk = ""
     for line in lines:
-        # Check if adding this line would exceed limit
         if len(current_chunk) + len(line) + 1 > limit:
             if current_chunk:
                 chunks.append(current_chunk)
                 current_chunk = line
             else:
-                # If a single line is too long, hard split it
                 while len(line) > limit:
                     chunks.append(line[:limit])
                     line = line[limit:]
                 current_chunk = line
         else:
-            if current_chunk:
-                current_chunk += "\n" + line
-            else:
-                current_chunk = line
+            current_chunk = f"{current_chunk}\n{line}" if current_chunk else line
     if current_chunk:
         chunks.append(current_chunk)
     return chunks
@@ -179,7 +193,6 @@ async def typing_indicator(channel, interval=9):
             await channel.trigger_typing()
             await asyncio.sleep(interval)
     except asyncio.CancelledError:
-        # When the task is cancelled, exit gracefully
         pass
 
 # -------------------------
@@ -205,15 +218,12 @@ async def generate_ai_response(conversation: list, channel) -> str:
             temperature=0.7,
         )
         logger.debug(f"Received response from OpenAI: {response}")
-
         if not response.choices:
             logger.warning("OpenAI API returned no choices.")
             return ""
-
         reply = response.choices[0].message.content
         logger.debug(f"Final reply from OpenAI: {reply}")
         return reply
-
     except Exception as e:
         handle_exception(e, "Error during AI response generation")
         return ""
@@ -226,20 +236,10 @@ class OGImageParser(html.parser.HTMLParser):
     Custom HTMLParser to extract the 'og:image' meta tag from HTML.
     """
     def __init__(self):
-        """
-        Initializes the parser and sets the initial value of og_image to None.
-        """
         super().__init__()
         self.og_image = None
 
     def handle_starttag(self, tag, attrs):
-        """
-        Handles start tags and checks for the og:image meta tag.
-
-        Args:
-            tag (str): The HTML tag name.
-            attrs (list): List of (attribute, value) tuples.
-        """
         if tag.lower() == "meta":
             attr_dict = dict(attrs)
             if attr_dict.get("property") == "og:image" and "content" in attr_dict:
@@ -332,11 +332,9 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
         if not message:
             return
 
-        # Retrieve channel name if available; otherwise, use channel ID as fallback
         channel_name = getattr(message.channel, "name", f"Channel {message.channel.id}")
         bot_mention = f"<@{bot.user.id}>"
 
-        # Check if the message is a reply to another message and if that message was sent by the bot
         is_reply_to_bot = False
         referenced_message = None
         if message.message_reference and message.message_reference.message_id:
@@ -348,40 +346,31 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             except Exception as e:
                 handle_exception(e, f"Failed to fetch referenced message in channel {channel_name}")
 
-        # Ignore messages sent by the bot itself
         if message.author.id == bot.user.id:
             return
 
-        # Only process the message if the bot is mentioned, it has image attachments,
-        # or it is a reply to one of the bot's messages
         if bot_mention not in message.content and not message.attachments and not is_reply_to_bot:
             return
 
-        # Trigger an initial typing indicator
         await message.channel.trigger_typing()
         logger.debug(f"Bot triggered by message {message.id} in channel {channel_name}")
 
-        # Remove the bot mention from the text for cleaner processing
         user_text = message.content.replace(bot_mention, "@ChatGPT")
         logger.debug(f"User '{message.author.username}' in channel {channel_name}: {user_text}")
 
-        # Gather image attachment URLs
         image_urls = [
             attachment.url
             for attachment in message.attachments
             if attachment.content_type and attachment.content_type.startswith("image/")
         ]
 
-        # Build the user message parts from text and any image URLs
         user_message_parts = [{"type": "text", "text": user_text}]
         for url in image_urls:
             user_message_parts.append({"type": "image_url", "image_url": {"url": url}})
 
-        # Retrieve conversation history for the channel
         conversation_history = channel_message_history[message.channel.id]
         conversation = list(conversation_history)
 
-        # Insert system prompt if not already present
         if not conversation or conversation[0].get("role") != "system":
             conversation.insert(
                 0,
@@ -397,20 +386,15 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
                 },
             )
 
-        # If the message is a reply to the bot, include the referenced message content
         if is_reply_to_bot and referenced_message:
             conversation.append({"role": "assistant", "content": referenced_message.content})
 
-        # Append the new user message to the conversation history
         conversation.append({"role": "user", "content": user_message_parts})
 
-        # Start the typing indicator background task
         typing_task = asyncio.create_task(typing_indicator(message.channel))
         try:
-            # Generate the AI response
             reply = await generate_ai_response(conversation, message.channel)
         finally:
-            # Cancel the typing indicator once the response is ready
             typing_task.cancel()
             try:
                 await typing_task
@@ -421,16 +405,13 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
             await message.channel.send("⚠️ I couldn't generate a response.", reply_to=message.id)
             return
 
-        # Split the reply into chunks if it's too long
         chunks = split_message(reply)
         for i, chunk in enumerate(chunks):
-            # Reply to the original message only on the first part
             if i == 0:
                 await message.channel.send(chunk, reply_to=message.id)
             else:
                 await message.channel.send(chunk)
 
-        # Update the conversation history with the latest messages
         conversation_history.append({"role": "user", "content": user_message_parts})
         conversation_history.append({"role": "assistant", "content": reply})
 
@@ -474,19 +455,16 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         ctx: The context of the command.
     """
     try:
-        message: interactions.Message = ctx.target  # Retrieve the selected message
+        message: interactions.Message = ctx.target
         if not message:
             await ctx.send("❌ Could not retrieve the message.", ephemeral=True)
             return
 
-        # Get the channel name (or fallback to channel ID)
         channel_name = getattr(message.channel, "name", f"Channel {message.channel.id}")
         logger.debug(f"User '{ctx.author.username}' requested analysis for message {message.id} in channel {channel_name}")
 
-        # Extract text content from the message
         message_text = message.content or "📜 No text found in message."
 
-        # Process attachments (images and videos) in the message
         attachment_parts = []
         for attachment in message.attachments:
             if not attachment.content_type:
@@ -496,22 +474,18 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             elif attachment.content_type.startswith("video/"):
                 attachment_parts.append({"type": "video_url", "video_url": {"url": attachment.url}})
 
-        # Use precompiled regex to find Tenor/Giphy URLs in the message text
         for url in TENOR_GIPHY_PATTERN.findall(message_text):
             direct_url = await fetch_direct_gif(url)
             if direct_url:
                 attachment_parts.append({"type": "image_url", "image_url": {"url": direct_url}})
                 logger.debug(f"Added direct GIF URL {direct_url} from {url}")
 
-        # Combine text and attachments into message parts
         user_message_parts = [{"type": "text", "text": message_text}]
         user_message_parts.extend(attachment_parts)
 
-        # Retrieve conversation history for the channel
         conversation_history = channel_message_history[message.channel.id]
         conversation = list(conversation_history)
 
-        # Insert a system message if not already present
         if not conversation or conversation[0].get("role") != "system":
             conversation.insert(
                 0,
@@ -527,19 +501,14 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
                 },
             )
 
-        # Append the user's analysis request to the conversation history
         conversation.append({"role": "user", "content": user_message_parts})
 
-        # Defer the context menu response
         await ctx.defer()
 
-        # Start a typing indicator task for this command
         typing_task = asyncio.create_task(typing_indicator(ctx.channel))
         try:
-            # Generate the AI response
             reply = await generate_ai_response(conversation, ctx.channel)
         finally:
-            # Cancel the typing indicator once done
             typing_task.cancel()
             try:
                 await typing_task
@@ -550,7 +519,6 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             await ctx.send("⚠️ I couldn't generate a response.", ephemeral=True)
             return
 
-        # Split and send the reply in chunks if it's too long
         chunks = split_message(reply)
         for i, chunk in enumerate(chunks):
             if i == 0:
@@ -558,7 +526,6 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
             else:
                 await ctx.send(chunk)
 
-        # Update conversation history with the new messages
         conversation_history.append({"role": "user", "content": user_message_parts})
         conversation_history.append({"role": "assistant", "content": reply})
 
@@ -567,10 +534,23 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         await ctx.send("⚠️ An unexpected error occurred.", ephemeral=True)
 
 # -------------------------
-# Bot Startup
+# Bot Startup and Shutdown
 # -------------------------
-try:
-    bot.start(TOKEN)
-except Exception as e:
-    handle_exception(e, "Exception occurred during bot startup")
-    sys.exit(1)
+async def main():
+    try:
+        logger.info("Starting the bot...")
+        # Use the asynchronous start method to avoid nested event loop issues.
+        await bot.astart(TOKEN)
+    except Exception as e:
+        handle_exception(e, "Exception occurred during bot startup")
+    finally:
+        await shutdown(asyncio.get_event_loop())
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("KeyboardInterrupt received. Exiting.")
+    finally:
+        logging.shutdown()
+        sys.exit(0)
