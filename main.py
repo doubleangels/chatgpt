@@ -101,46 +101,6 @@ channel_message_history = defaultdict(lambda: deque(maxlen=10))
 bot = interactions.Client(token=TOKEN, sync_commands=True)
 
 # -------------------------
-# Graceful Shutdown Handling
-# -------------------------
-async def shutdown(loop, sig=None):
-    """
-    Cancels outstanding tasks, closes the aiohttp session, flushes Sentry,
-    and logs the shutdown.
-    
-    Args:
-        loop: The current event loop.
-        sig: Optional signal that triggered the shutdown.
-    """
-    if sig:
-        logger.info(f"Received exit signal {sig.name}. Initiating shutdown...")
-    logger.info("Cancelling outstanding tasks")
-    tasks = [task for task in asyncio.all_tasks(loop) if task is not asyncio.current_task(loop)]
-    for task in tasks:
-        task.cancel()
-    await asyncio.gather(*tasks, return_exceptions=True)
-    global aiohttp_session
-    if aiohttp_session:
-        await aiohttp_session.close()
-    logger.info("Flushing Sentry events...")
-    sentry_sdk.flush(timeout=2)
-    logger.info("Shutdown complete.")
-
-def handle_interrupt(sig, frame):
-    """
-    Synchronous signal handler that schedules the asynchronous shutdown.
-    
-    Args:
-        sig: The signal received.
-        frame: The current stack frame.
-    """
-    loop = asyncio.get_event_loop()
-    loop.create_task(shutdown(loop, sig))
-
-signal.signal(signal.SIGINT, handle_interrupt)
-signal.signal(signal.SIGTERM, handle_interrupt)
-
-# -------------------------
 # Helper Function: Split Long Message
 # -------------------------
 def split_message(text: str, limit: int = 2000) -> list:
@@ -534,12 +494,51 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
         await ctx.send("⚠️ An unexpected error occurred.", ephemeral=True)
 
 # -------------------------
+# Graceful Shutdown Handling
+# -------------------------
+async def shutdown(loop, sig=None):
+    """
+    Cancels outstanding tasks, closes the aiohttp session, flushes Sentry,
+    and logs the shutdown.
+    
+    Args:
+        loop: The current event loop.
+        sig: Optional signal that triggered the shutdown.
+    """
+    if sig:
+        logger.info(f"Received exit signal {sig.name}. Initiating shutdown...")
+    logger.info("Cancelling outstanding tasks")
+    tasks = [task for task in asyncio.all_tasks(loop) if task is not asyncio.current_task(loop)]
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+    global aiohttp_session
+    if aiohttp_session:
+        await aiohttp_session.close()
+    logger.info("Flushing Sentry events...")
+    sentry_sdk.flush(timeout=2)
+    logger.info("Shutdown complete.")
+
+def handle_interrupt(sig, frame):
+    """
+    Synchronous signal handler that schedules the asynchronous shutdown.
+    
+    Args:
+        sig: The signal received.
+        frame: The current stack frame.
+    """
+    loop = asyncio.get_event_loop()
+    loop.create_task(shutdown(loop, sig))
+
+signal.signal(signal.SIGINT, handle_interrupt)
+signal.signal(signal.SIGTERM, handle_interrupt)
+
+# -------------------------
 # Bot Startup and Shutdown
 # -------------------------
 async def main():
     try:
         logger.info("Starting the bot...")
-        # Use the asynchronous start method to avoid nested event loop issues.
         await bot.astart(TOKEN)
     except Exception as e:
         handle_exception(e, "Exception occurred during bot startup")
