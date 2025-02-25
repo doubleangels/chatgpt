@@ -200,6 +200,18 @@ async def generate_ai_response(conversation: list, channel) -> str:
         logger.error(f"Error generating AI response: {e}", exc_info=True)
         return ""
 
+import html.parser
+import logging
+from typing import Optional
+import aiohttp
+
+# Set up a logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+
+# Create a global aiohttp session (ensure proper cleanup in your application)
+aiohttp_session = aiohttp.ClientSession()
+
 class OGImageParser(html.parser.HTMLParser):
     """
     ! CUSTOM HTMLPARSER FOR 'OG:IMAGE'
@@ -207,7 +219,7 @@ class OGImageParser(html.parser.HTMLParser):
     """
     def __init__(self):
         super().__init__()
-        self.og_image = None
+        self.og_image: Optional[str] = None
 
     def handle_starttag(self, tag, attrs):
         # Check for meta tags and extract og:image property if present.
@@ -217,7 +229,7 @@ class OGImageParser(html.parser.HTMLParser):
                 self.og_image = attr_dict["content"]
                 logger.debug(f"Found og:image with content: {self.og_image}")
 
-def extract_og_image(html_text: str) -> str:
+def extract_og_image(html_text: str) -> Optional[str]:
     """
     ! EXTRACTS THE OG:IMAGE URL FROM PROVIDED HTML TEXT
     * Extracts the URL found in the 'og:image' meta tag from the provided HTML content.
@@ -229,22 +241,23 @@ def extract_og_image(html_text: str) -> str:
     logger.debug("Starting extraction of og:image URL.")
     parser = OGImageParser()
     parser.feed(html_text)
+    parser.close()  # Ensure the parser is closed after use
     if parser.og_image:
         logger.debug(f"Successfully extracted og:image URL: {parser.og_image}")
     else:
         logger.warning("No og:image meta tag found in the HTML.")
     return parser.og_image
 
-async def fetch_direct_gif(url: str) -> str:
+async def fetch_direct_gif(url: str) -> Optional[str]:
     """
     ! FETCHES THE HTML CONTENT FROM A URL AND EXTRACTS THE DIRECT GIF URL FROM THE OG:IMAGE META TAG
-    * Fetches the HTML content from the provided URL, then extracts and returns the direct GIF URL found in the 'og:image' meta tag.
+    * Fetches the HTML content from the provided URL, then extracts and returns the direct GIF URL 
+    * found in the 'og:image' meta tag.
     ? PARAMETERS:
     ? url - The URL to fetch.
     ? RETURNS:
     * The direct GIF URL extracted from the HTML, or None if not found.
     """
-    global aiohttp_session
     logger.debug(f"Initiating fetch for URL: {url}")
     try:
         async with aiohttp_session.get(url) as response:
@@ -258,7 +271,7 @@ async def fetch_direct_gif(url: str) -> str:
         return None
 
     try:
-        direct_url = OGImageParser.extract_og_image(html_text)
+        direct_url = extract_og_image(html_text)
         if direct_url:
             logger.debug(f"Extracted direct GIF URL: {direct_url}")
         else:
