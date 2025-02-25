@@ -121,9 +121,9 @@ def split_message(text: str, limit: int = 2000) -> list:
     * A list of text chunks.
     """
     # Log the start of the split_message function.
-    logger.debug(f"split_message: Splitting text of length {len(text)} with limit {limit}.")
+    logger.debug(f"Splitting text of length {len(text)} with limit {limit}.")
     if len(text) <= limit:
-        logger.debug("split_message: Text within limit; returning original text as a single chunk.")
+        logger.debug("Text within limit; returning original text as a single chunk.")
         return [text]
     # Split text by newline to build chunks that respect line boundaries.
     lines = text.split("\n")
@@ -134,13 +134,13 @@ def split_message(text: str, limit: int = 2000) -> list:
         if len(current_chunk) + len(line) + 1 > limit:
             if current_chunk:
                 chunks.append(current_chunk)
-                logger.debug(f"split_message: Appended chunk of length {len(current_chunk)}.")
+                logger.debug(f"Appended chunk of length {len(current_chunk)}.")
                 current_chunk = line
             else:
                 # If current_chunk is empty, break the long line into pieces.
                 while len(line) > limit:
                     chunks.append(line[:limit])
-                    logger.debug(f"split_message: Appended split chunk of length {limit} from a long line.")
+                    logger.debug(f"Appended split chunk of length {limit} from a long line.")
                     line = line[limit:]
                 current_chunk = line
         else:
@@ -148,8 +148,8 @@ def split_message(text: str, limit: int = 2000) -> list:
             current_chunk = f"{current_chunk}\n{line}" if current_chunk else line
     if current_chunk:
         chunks.append(current_chunk)
-        logger.debug(f"split_message: Appended final chunk of length {len(current_chunk)}.")
-    logger.debug(f"split_message: Total chunks created: {len(chunks)}.")
+        logger.debug(f"Appended final chunk of length {len(current_chunk)}.")
+    logger.debug(f"Total chunks created: {len(chunks)}.")
     return chunks
 
 async def typing_indicator(channel, interval=9):
@@ -160,15 +160,15 @@ async def typing_indicator(channel, interval=9):
     ? channel  - The Discord channel to trigger typing on.
     ? interval - Number of seconds between each trigger.
     """
-    logger.debug(f"typing_indicator: Starting typing indicator with interval {interval} seconds.")
+    logger.debug(f"Starting typing indicator with interval {interval} seconds.")
     try:
         while True:
             # Trigger the typing indicator and wait for the next interval.
             await channel.trigger_typing()
-            logger.debug("typing_indicator: Triggered typing indicator.")
+            logger.debug("Triggered typing indicator.")
             await asyncio.sleep(interval)
     except asyncio.CancelledError:
-        logger.debug("typing_indicator: Typing indicator task cancelled.")
+        logger.debug("Typing indicator task cancelled.")
         pass
 
 async def generate_ai_response(conversation: list, channel) -> str:
@@ -181,7 +181,7 @@ async def generate_ai_response(conversation: list, channel) -> str:
     ? RETURNS:
     * A string representing the AI-generated reply, or an empty string if generation fails.
     """
-    logger.debug(f"generate_ai_response: Preparing to send conversation payload to OpenAI. Conversation length: {len(conversation)}")
+    logger.debug(f"Preparing to send conversation payload to OpenAI. Conversation length: {len(conversation)}")
     try:
         response = openai.chat.completions.create(
             model=MODEL_NAME,
@@ -189,15 +189,15 @@ async def generate_ai_response(conversation: list, channel) -> str:
             max_tokens=500,
             temperature=0.7,
         )
-        logger.debug(f"generate_ai_response: Received response from OpenAI.")
+        logger.debug(f"Received response from OpenAI.")
         if not response.choices:
-            logger.warning("generate_ai_response: OpenAI API returned no choices.")
+            logger.warning("OpenAI API returned no choices.")
             return ""
         reply = response.choices[0].message.content
-        logger.debug(f"generate_ai_response: Final reply from OpenAI obtained.")
+        logger.debug(f"Final reply from OpenAI obtained.")
         return reply
     except Exception as e:
-        handle_exception(e, "Error during AI response generation")
+        logger.error(f"Error generating AI response: {e}", exc_info=True)
         return ""
 
 class OGImageParser(html.parser.HTMLParser):
@@ -215,7 +215,7 @@ class OGImageParser(html.parser.HTMLParser):
             attr_dict = dict(attrs)
             if attr_dict.get("property") == "og:image" and "content" in attr_dict:
                 self.og_image = attr_dict["content"]
-                logger.debug(f"OGImageParser: Found og:image with content: {self.og_image}")
+                logger.debug(f"Found og:image with content: {self.og_image}")
 
     def extract_og_image(html_text: str) -> str:
         """
@@ -226,13 +226,13 @@ class OGImageParser(html.parser.HTMLParser):
         ? RETURNS:
         * The URL found in the og:image meta tag, or None if not found.
         """
-        logger.debug("OGImageParser.extract_og_image: Starting extraction of og:image URL.")
+        logger.debug("Starting extraction of og:image URL.")
         parser = OGImageParser()
         parser.feed(html_text)
         if parser.og_image:
-            logger.debug(f"OGImageParser.extract_og_image: Successfully extracted og:image URL: {parser.og_image}")
+            logger.debug(f"Successfully extracted og:image URL: {parser.og_image}")
         else:
-            logger.warning("OGImageParser.extract_og_image: No og:image meta tag found in the HTML.")
+            logger.warning("No og:image meta tag found in the HTML.")
         return parser.og_image
 
     async def fetch_direct_gif(url: str) -> str:
@@ -245,27 +245,27 @@ class OGImageParser(html.parser.HTMLParser):
         * The direct GIF URL extracted from the HTML, or None if not found.
         """
         global aiohttp_session
-        logger.debug(f"fetch_direct_gif: Initiating fetch for URL: {url}")
+        logger.debug(f"Initiating fetch for URL: {url}")
         try:
             async with aiohttp_session.get(url) as response:
                 if response.status != 200:
-                    logger.warning(f"fetch_direct_gif: Failed to retrieve URL {url} (status {response.status}).")
+                    logger.warning(f"Failed to retrieve URL {url} (status {response.status}).")
                     return None
                 html_text = await response.text()
-                logger.debug(f"fetch_direct_gif: Successfully retrieved HTML content from {url}")
+                logger.debug(f"Successfully retrieved HTML content from {url}")
         except Exception as e:
-            handle_exception(e, f"Error fetching URL {url}")
+            logger.error(f"Error fetching URL {url}: {e}", exc_info=True)
             return None
 
         try:
             direct_url = OGImageParser.extract_og_image(html_text)
             if direct_url:
-                logger.debug(f"fetch_direct_gif: Extracted direct GIF URL: {direct_url}")
+                logger.debug(f"Extracted direct GIF URL: {direct_url}")
             else:
-                logger.warning(f"fetch_direct_gif: No OG image found for URL {url}")
+                logger.warning(f"No OG image found for URL {url}")
             return direct_url
         except Exception as e:
-            handle_exception(e, f"Error extracting OG image from URL {url}")
+            logger.error(f"Error extracting direct GIF URL: {e}", exc_info=True)
             return None
 
 # -------------------------
@@ -293,7 +293,7 @@ async def on_ready():
         )
         logger.info("Bot is online and ready!")
     except Exception as e:
-        handle_exception(e, "Error during on_ready event")
+        logger.error(f"Error setting bot presence: {e}", exc_info=True)
 
 @interactions.listen()
 async def on_message_create(event: interactions.api.events.MessageCreate):
@@ -322,7 +322,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
                 )
                 is_reply_to_bot = (referenced_message and referenced_message.author.id == bot.user.id)
             except Exception as e:
-                handle_exception(e, f"Failed to fetch referenced message in channel {channel_name}")
+                logger.error(f"Error fetching referenced message: {e}", exc_info=True)
 
         # Ignore messages sent by the bot itself.
         if message.author.id == bot.user.id:
@@ -411,7 +411,7 @@ async def on_message_create(event: interactions.api.events.MessageCreate):
 
     except Exception as e:
         channel_name = getattr(message.channel, "name", "Unknown Channel") if message else "Unknown Channel"
-        handle_exception(e, f"Unexpected error in on_message_create (Channel: {channel_name})")
+        logger.error(f"Error processing message in {channel_name}: {e}", exc_info=True)
 
 # -------------------------
 # Slash Commands
@@ -437,7 +437,7 @@ async def reset(ctx: interactions.ComponentContext):
         await ctx.send("🗑️ **Global conversation history has been reset.**", ephemeral=True)
     except Exception as e:
         # Log the error with context and inform the user.
-        handle_exception(e, f"Error in /reset command by {ctx.author.username}")
+        logger.error(f"Error in /reset command: {e}", exc_info=True)
         await ctx.send("⚠️ An error occurred while resetting the conversation history.", ephemeral=True)
 
 # -------------------------
@@ -546,7 +546,7 @@ async def analyze_message(ctx: interactions.ContextMenuContext):
 
     except Exception as e:
         # Log any unexpected errors with context and inform the user.
-        handle_exception(e, f"Unexpected error in 'Analyze with ChatGPT' command by {ctx.author.username}")
+        logger.error(f"Error in analyze_message: {e}", exc_info=True)
         await ctx.send("⚠️ An unexpected error occurred.", ephemeral=True)
 
 # -------------------------
