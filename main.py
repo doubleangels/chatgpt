@@ -200,18 +200,6 @@ async def generate_ai_response(conversation: list, channel) -> str:
         logger.error(f"Error generating AI response: {e}", exc_info=True)
         return ""
 
-import html.parser
-import logging
-from typing import Optional
-import aiohttp
-
-# Set up a logger
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-
-# Create a global aiohttp session (ensure proper cleanup in your application)
-aiohttp_session = aiohttp.ClientSession()
-
 class OGImageParser(html.parser.HTMLParser):
     """
     ! CUSTOM HTMLPARSER FOR 'OG:IMAGE'
