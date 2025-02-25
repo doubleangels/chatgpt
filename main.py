@@ -217,56 +217,56 @@ class OGImageParser(html.parser.HTMLParser):
                 self.og_image = attr_dict["content"]
                 logger.debug(f"Found og:image with content: {self.og_image}")
 
-    def extract_og_image(html_text: str) -> str:
-        """
-        ! EXTRACTS THE OG:IMAGE URL FROM PROVIDED HTML TEXT
-        * Extracts the URL found in the 'og:image' meta tag from the provided HTML content.
-        ? PARAMETERS:
-        ? html_text - The HTML content as a string.
-        ? RETURNS:
-        * The URL found in the og:image meta tag, or None if not found.
-        """
-        logger.debug("Starting extraction of og:image URL.")
-        parser = OGImageParser()
-        parser.feed(html_text)
-        if parser.og_image:
-            logger.debug(f"Successfully extracted og:image URL: {parser.og_image}")
+def extract_og_image(html_text: str) -> str:
+    """
+    ! EXTRACTS THE OG:IMAGE URL FROM PROVIDED HTML TEXT
+    * Extracts the URL found in the 'og:image' meta tag from the provided HTML content.
+    ? PARAMETERS:
+    ? html_text - The HTML content as a string.
+    ? RETURNS:
+    * The URL found in the og:image meta tag, or None if not found.
+    """
+    logger.debug("Starting extraction of og:image URL.")
+    parser = OGImageParser()
+    parser.feed(html_text)
+    if parser.og_image:
+        logger.debug(f"Successfully extracted og:image URL: {parser.og_image}")
+    else:
+        logger.warning("No og:image meta tag found in the HTML.")
+    return parser.og_image
+
+async def fetch_direct_gif(url: str) -> str:
+    """
+    ! FETCHES THE HTML CONTENT FROM A URL AND EXTRACTS THE DIRECT GIF URL FROM THE OG:IMAGE META TAG
+    * Fetches the HTML content from the provided URL, then extracts and returns the direct GIF URL found in the 'og:image' meta tag.
+    ? PARAMETERS:
+    ? url - The URL to fetch.
+    ? RETURNS:
+    * The direct GIF URL extracted from the HTML, or None if not found.
+    """
+    global aiohttp_session
+    logger.debug(f"Initiating fetch for URL: {url}")
+    try:
+        async with aiohttp_session.get(url) as response:
+            if response.status != 200:
+                logger.warning(f"Failed to retrieve URL {url} (status {response.status}).")
+                return None
+            html_text = await response.text()
+            logger.debug(f"Successfully retrieved HTML content from {url}")
+    except Exception as e:
+        logger.error(f"Error fetching URL {url}: {e}", exc_info=True)
+        return None
+
+    try:
+        direct_url = OGImageParser.extract_og_image(html_text)
+        if direct_url:
+            logger.debug(f"Extracted direct GIF URL: {direct_url}")
         else:
-            logger.warning("No og:image meta tag found in the HTML.")
-        return parser.og_image
-
-    async def fetch_direct_gif(url: str) -> str:
-        """
-        ! FETCHES THE HTML CONTENT FROM A URL AND EXTRACTS THE DIRECT GIF URL FROM THE OG:IMAGE META TAG
-        * Fetches the HTML content from the provided URL, then extracts and returns the direct GIF URL found in the 'og:image' meta tag.
-        ? PARAMETERS:
-        ? url - The URL to fetch.
-        ? RETURNS:
-        * The direct GIF URL extracted from the HTML, or None if not found.
-        """
-        global aiohttp_session
-        logger.debug(f"Initiating fetch for URL: {url}")
-        try:
-            async with aiohttp_session.get(url) as response:
-                if response.status != 200:
-                    logger.warning(f"Failed to retrieve URL {url} (status {response.status}).")
-                    return None
-                html_text = await response.text()
-                logger.debug(f"Successfully retrieved HTML content from {url}")
-        except Exception as e:
-            logger.error(f"Error fetching URL {url}: {e}", exc_info=True)
-            return None
-
-        try:
-            direct_url = OGImageParser.extract_og_image(html_text)
-            if direct_url:
-                logger.debug(f"Extracted direct GIF URL: {direct_url}")
-            else:
-                logger.warning(f"No OG image found for URL {url}")
-            return direct_url
-        except Exception as e:
-            logger.error(f"Error extracting direct GIF URL: {e}", exc_info=True)
-            return None
+            logger.warning(f"No OG image found for URL {url}")
+        return direct_url
+    except Exception as e:
+        logger.error(f"Error extracting direct GIF URL: {e}", exc_info=True)
+        return None
 
 # -------------------------
 # Event Listeners
