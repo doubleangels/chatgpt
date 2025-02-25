@@ -207,7 +207,7 @@ class OGImageParser(html.parser.HTMLParser):
     """
     def __init__(self):
         super().__init__()
-        self.og_image: Optional[str] = None
+        self.og_image = None
 
     def handle_starttag(self, tag, attrs):
         # Check for meta tags and extract og:image property if present.
@@ -217,7 +217,7 @@ class OGImageParser(html.parser.HTMLParser):
                 self.og_image = attr_dict["content"]
                 logger.debug(f"Found og:image with content: {self.og_image}")
 
-def extract_og_image(html_text: str) -> Optional[str]:
+def extract_og_image(html_text: str):
     """
     ! EXTRACTS THE OG:IMAGE URL FROM PROVIDED HTML TEXT
     * Extracts the URL found in the 'og:image' meta tag from the provided HTML content.
@@ -236,7 +236,7 @@ def extract_og_image(html_text: str) -> Optional[str]:
         logger.warning("No og:image meta tag found in the HTML.")
     return parser.og_image
 
-async def fetch_direct_gif(url: str) -> Optional[str]:
+async def fetch_direct_gif(url: str):
     """
     ! FETCHES THE HTML CONTENT FROM A URL AND EXTRACTS THE DIRECT GIF URL FROM THE OG:IMAGE META TAG
     * Fetches the HTML content from the provided URL, then extracts and returns the direct GIF URL 
