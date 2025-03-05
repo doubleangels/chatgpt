@@ -1,6 +1,7 @@
 const { OpenAI } = require('openai');
 const { openaiApiKey, modelName } = require('../config');
-const logger = require('../logger')('aiService.js');
+const path = require('path')
+const logger = require('../logger')(path.basename(__filename));
 const Sentry = require('../sentry');
 
 // Initialize OpenAI client with API key from config

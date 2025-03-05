@@ -1,4 +1,5 @@
-const logger = require('../logger')('messageUtils.js');
+const path = require('path')
+const logger = require('../logger')(path.basename(__filename));
 
 /**
  * Splits a message into chunks that fit within Discord's character limit

@@ -1,7 +1,8 @@
 const { Events, Collection } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage } = require('../utils/messageUtils');
-const logger = require('../logger')('events/messageCreate.js');
+const path = require('path')
+const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
 const Sentry = require('../sentry');
 
