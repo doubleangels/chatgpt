@@ -1,7 +1,7 @@
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const logger = require('./logger')('index.js');
+const logger = require('./logger')(path.basename(__filename));
 const config = require('./config');
 const Sentry = require('./sentry');
 
@@ -23,7 +23,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // Collection to store conversation history for chat.
-client.conversations = new Collection();
+client.conversationHistory = new Collection();
 
 // Load and register command files.
 const commandsPath = path.join(__dirname, 'commands');

@@ -8,6 +8,8 @@ require('dotenv').config();
 module.exports = {
   // Discord bot token
   token: process.env.DISCORD_BOT_TOKEN,
+  // Discord application client ID
+  clientId: process.env.DISCORD_CLIENT_ID,
   // OpenAI API key
   openaiApiKey: process.env.OPENAI_API_KEY,
   // OpenAI model name
