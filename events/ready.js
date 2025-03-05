@@ -1,56 +1,33 @@
 const { ActivityType } = require('discord.js');
-const path = require('path');
-const logger = require('../logger')(path.basename(__filename));
+const logger = require('../logger')('ready.js');
 
+ /**
+  * Event handler for the 'ready' event.
+  * Executed once when the bot comes online. It sets the bot's presence,
+  * attempts to reschedule Disboard reminders, and reschedules all mute kicks.
+  *
+  * @param {Client} client - The Discord client instance.
+  */
 module.exports = {
   name: 'ready',
   once: true,
-  /**
-   * Executes once when the bot comes online
-   * Sets up the bot's presence and initial state
-   * 
-   * @param {Client} client - The Discord client instance
-   */
   async execute(client) {
-    logger.info("Bot is online! Initializing setup procedures...", {
-      username: client.user.tag,
-      userId: client.user.id,
-      guilds: client.guilds.cache.size
-    });
+    logger.info("Bot is online! Initializing setup procedures...");
 
     try {
-      // Set the bot's presence with a custom activity
+      // Set the bot's presence with a custom activity.
       await client.user.setPresence({
         activities: [{
-          name: "for ways to assist! ❤️",
+          name: "for pings! 📡",
           type: ActivityType.Watching
         }],
         status: "online"
       });
-      
-      logger.debug("Bot presence and activity set successfully", { 
-        activity: "Watching for ways to assist", 
-        status: "online" 
-      });
-      
-      // Log information about connected guilds
-      client.guilds.cache.forEach(guild => {
-        logger.info(`Connected to guild: ${guild.name}`, {
-          guildId: guild.id,
-          memberCount: guild.memberCount,
-          channelCount: guild.channels.cache.size
-        });
-      });
-      
+      logger.debug("Bot presence and activity set:", { activity: "Watching for pings", status: "online" });
     } catch (error) {
-      logger.error("Failed to set bot presence", { 
-        error: error.message,
-        stack: error.stack
-      });
+      logger.error("Failed to set bot presence:", { error });
     }
 
-    logger.info("Bot is ready and setup complete!", {
-      readyTimestamp: new Date().toISOString()
-    });
+    logger.info("Bot is ready and setup complete!");
   }
 };
