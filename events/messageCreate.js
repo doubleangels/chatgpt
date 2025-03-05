@@ -33,10 +33,13 @@ module.exports = {
         isReplyToBot = referencedMessage.author.id === client.user.id;
         
         if (isReplyToBot) {
-          logger.debug(`Message is a reply to bot's message: ${referencedMessage.id}`);
+          logger.debug(`Message ${message.id} is a reply to bot's message: ${referencedMessage.id}`);
         }
       } catch (error) {
-        logger.error(`Failed to fetch referenced message: ${error}`);
+        logger.error(`Failed to fetch referenced message ${message.reference.messageId}: ${error.message}`, {
+          error: error.stack,
+          messageId: message.id
+        });
         Sentry.captureException(error, {
           extra: {
             context: 'fetchReferencedMessage',
@@ -57,13 +60,14 @@ module.exports = {
     
     // Start typing indicator to show the bot is processing
     await message.channel.sendTyping().catch(err => {
-      logger.warn(`Failed to send typing indicator: ${err}`);
+      logger.warn(`Failed to send typing indicator in channel ${message.channel.id}: ${err.message}`);
     });
     
-    logger.info(`Bot triggered by ${message.author.tag} in #${message.channel.name}`, {
+    logger.info(`Bot triggered by ${message.author.tag} (${message.author.id}) in #${message.channel.name} (${message.channel.id})`, {
       userId: message.author.id,
       channelId: message.channel.id,
       guildId: message.guild?.id,
+      messageId: message.id,
       hasMention: hasBotMention,
       isReply: isReplyToBot
     });
@@ -73,7 +77,7 @@ module.exports = {
     
     // Initialize conversation history for this channel if it doesn't exist
     if (!client.conversationHistory.has(message.channelId)) {
-      logger.info(`Initializing new conversation history for channel ${message.channel.name}`);
+      logger.info(`Initializing new conversation history for channel #${message.channel.name} (${message.channelId}).`);
       
       client.conversationHistory.set(message.channelId, [
         {
@@ -92,7 +96,7 @@ module.exports = {
     
     // Add referenced message to history if replying to bot
     if (isReplyToBot && referencedMessage) {
-      logger.debug(`Adding bot's previous response to conversation history`);
+      logger.debug(`Adding bot's previous response to conversation history for channel ${message.channelId}.`);
       conversationHistory.push({
         role: 'assistant',
         content: referencedMessage.content
@@ -100,7 +104,7 @@ module.exports = {
     }
     
     // Add user message to history
-    logger.debug(`Adding user message to conversation history`);
+    logger.debug(`Adding user message (${message.id}) to conversation history for channel ${message.channelId}.`);
     conversationHistory.push({
       role: 'user',
       content: userText
@@ -109,7 +113,7 @@ module.exports = {
     // Ensure history doesn't exceed maximum length
     // Keep the system message and trim older messages
     if (conversationHistory.length > maxHistoryLength + 1) { // +1 for system message
-      logger.debug(`Trimming conversation history (current: ${conversationHistory.length}, max: ${maxHistoryLength + 1})`);
+      logger.debug(`Trimming conversation history for channel ${message.channelId} (current: ${conversationHistory.length}, max: ${maxHistoryLength + 1}).`);
       
       while (conversationHistory.length > maxHistoryLength + 1) {
         if (conversationHistory[0].role === 'system') {
@@ -125,18 +129,18 @@ module.exports = {
     
     try {
       // Generate AI response
-      logger.info(`Generating AI response for message from ${message.author.tag}`);
+      logger.info(`Generating AI response for message ${message.id} from ${message.author.tag} (${message.author.id}).`);
       const reply = await generateAIResponse(conversationHistory);
       
       if (!reply) {
-        logger.warn(`Failed to generate AI response for message ${message.id}`);
+        logger.warn(`Failed to generate AI response for message ${message.id} in channel ${message.channelId}.`);
         await message.reply("⚠️ I couldn't generate a response.");
         return;
       }
       
       // Split response if needed and send
       const chunks = splitMessage(reply);
-      logger.info(`Sending AI response in ${chunks.length} chunks`);
+      logger.info(`Sending AI response in ${chunks.length} chunks for message ${message.id} in channel ${message.channelId}.`);
       
       for (let i = 0; i < chunks.length; i++) {
         if (i === 0) {
@@ -149,7 +153,7 @@ module.exports = {
       }
       
       // Add AI response to history
-      logger.debug(`Adding AI response to conversation history`);
+      logger.debug(`Adding AI response to conversation history for channel ${message.channelId}.`);
       conversationHistory.push({
         role: 'assistant',
         content: reply
@@ -157,7 +161,11 @@ module.exports = {
       
     } catch (error) {
       // Log and track errors
-      logger.error(`Error processing message: ${error}`);
+      logger.error(`Error processing message ${message.id}: ${error.message}`, {
+        error: error.stack,
+        userId: message.author.id,
+        channelId: message.channel.id
+      });
       
       Sentry.captureException(error, {
         extra: {

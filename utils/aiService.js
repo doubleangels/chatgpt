@@ -19,7 +19,7 @@ const openai = new OpenAI({
 async function generateAIResponse(conversation) {
   try {
     // Log the conversation being sent (sensitive data, use debug level)
-    logger.debug(`Sending conversation to OpenAI API with ${conversation.length} messages`);
+    logger.debug(`Sending conversation to OpenAI API with ${conversation.length} messages, using model ${modelName}.`);
     
     // Make API request to OpenAI
     const response = await openai.chat.completions.create({
@@ -30,25 +30,45 @@ async function generateAIResponse(conversation) {
     });
     
     // Log successful API response
-    logger.debug(`Received response from OpenAI: status OK, ${response.choices?.length || 0} choices`);
+    logger.debug(`Received response from OpenAI: choices: ${response.choices?.length || 0}, completion_tokens: ${response.usage?.completion_tokens}, total_tokens: ${response.usage?.total_tokens}`);
     
     // Check if the response contains any choices
     if (!response.choices || response.choices.length === 0) {
-      logger.warn('OpenAI API returned no choices in the response');
+      logger.warn('OpenAI API returned no choices in the response.', {
+        model: modelName,
+        responseStatus: response.status,
+        responseId: response.id
+      });
       return '';
     }
     
     // Extract the reply text from the first choice
     const reply = response.choices[0].message.content;
-    logger.info(`Generated AI response (${reply.length} chars)`);
+    logger.info(`Generated AI response (${reply.length} chars) with finish_reason: ${response.choices[0].finish_reason}`, {
+      responseId: response.id,
+      tokensUsed: response.usage?.total_tokens,
+      finishReason: response.choices[0].finish_reason
+    });
     return reply;
   } catch (error) {
     // Log and track errors
-    logger.error(`Error generating AI response: ${error.message}`);
+    logger.error(`Error generating AI response: ${error.message}`, {
+      error: error.stack,
+      model: modelName,
+      errorType: error.type,
+      errorCode: error.code,
+      statusCode: error.status
+    });
     Sentry.captureException(error, {
       extra: {
         context: 'generateAIResponse',
-        conversationLength: conversation?.length
+        conversationLength: conversation?.length,
+        model: modelName,
+        errorDetails: {
+          type: error.type,
+          code: error.code,
+          status: error.status
+        }
       }
     });
     return '';
