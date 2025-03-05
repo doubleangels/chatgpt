@@ -2,12 +2,19 @@
     "name": "chatgpt",
     "version": "1.0.0",
     "description": "A ChatGPT chatbot for use on Discord servers. ",
-    "main": "src/index.js",
+    "main": "index.js",
     "scripts": {
-        "start": "node src/index.js",
-        "deploy": "node deploy-commands.js",
-        "dev": "nodemon src/index.js"
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/doubleangels/chatgpt.git"
+    },
+    "author": "doubleangels",
+    "bugs": {
+        "url": "https://github.com/doubleangels/chatgpt/issues"
+    },
+    "homepage": "https://github.com/doubleangels/chatpt#readme",
     "dependencies": {
         "@sentry/node": "^9.3.0",
         "@sentry/profiling-node": "^9.3.0",
@@ -16,11 +23,5 @@
         "node": "^23.9.0",
         "openai": "^4.86.1",
         "winston": "^3.17.0"
-    },
-    "devDependencies": {
-        "nodemon": "^3.1.9"
-    },
-    "engines": {
-        "node": ">=16.9.0"
     }
 }
