@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const logger = require('../logger')('reset.js');
+const path = require('path');
+const logger = require('../logger')(path.basename(__filename));
 
 module.exports = {
   // Define the command as a slash command with administrator permissions

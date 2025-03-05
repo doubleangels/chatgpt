@@ -1,6 +1,7 @@
 const Sentry = require("@sentry/node");
 const { nodeProfilingIntegration } = require("@sentry/profiling-node");
-const logger = require('./logger')('sentry.js');
+const path = require('path');
+const logger = require('./logger')(path.basename(__filename));
 
 // Initialize Sentry for error tracking and performance monitoring.
 Sentry.init({
