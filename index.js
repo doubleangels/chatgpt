@@ -16,13 +16,14 @@ const client = new Client({
     GatewayIntentBits.Guilds,           // Allows bot to access basic guild (server) data.
     GatewayIntentBits.GuildMessages,    // Allows bot to read messages in guilds.
     GatewayIntentBits.MessageContent,   // Allows bot to read the content of messages.
-    GatewayIntentBits.GuildMembers,     // Allows bot to access guild member information.
-    GatewayIntentBits.GuildPresences,   // Allows bot to track member presence (online/offline).
   ]
 });
 
 // Collection to store bot commands.
 client.commands = new Collection();
+
+// Initialize collections
+client.conversationHistory = new Collection();
 
 // Load and register command files.
 const commandsPath = path.join(__dirname, 'commands');
