@@ -30,6 +30,8 @@ services:
     environment:
       - DISCORD_BOT_TOKEN=your_discord_bot_token_here
       - OPENAI_API_KEY=your_openai_api_key_here
+      - MODEL_NAME=your_desired_model_here
+      - LOG_LEVEL=your_desired_log_level_here
 
 networks:
   default:
