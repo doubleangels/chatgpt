@@ -23,7 +23,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // Collection to store conversation history for chat.
-client.conversations = new Collection();
+client.conversationHistory = new Collection();
 
 // Load and register command files.
 const commandsPath = path.join(__dirname, 'commands');
