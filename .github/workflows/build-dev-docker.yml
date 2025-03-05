@@ -50,8 +50,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/nova:dev
-            ghcr.io/${{ github.repository_owner }}/nova:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/chatgpt:dev
+            ghcr.io/${{ github.repository_owner }}/chatgpt:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -84,7 +84,7 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: doubleangels
-          SENTRY_PROJECT: nova
+          SENTRY_PROJECT: chatgpt
         with:
           environment: production
           ignore_missing: true
