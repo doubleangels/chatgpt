@@ -1,40 +1,21 @@
 require('dotenv').config();
 
 /**
- * Configuration object containing all settings for the application
- * Values are loaded from environment variables with fallbacks for optional settings
+ * Configuration file for the bot.
+ *
+ * Exports environment variables used throughout the bot's code.
  */
-const config = {
-  // Discord bot token - required for authentication with Discord API
+module.exports = {
+  // Discord bot token
   token: process.env.DISCORD_BOT_TOKEN,
-  
-  // OpenAI API key - required for AI functionality
+  // OpenAI API key
   openaiApiKey: process.env.OPENAI_API_KEY,
-  
-  // OpenAI model to use - defaults to gpt-4o-mini if not specified
+  // OpenAI model to use
   modelName: process.env.MODEL_NAME || 'gpt-4o-mini',
-  
-  // Log level - controls verbosity of logging
-  logLevel: process.env.LOG_LEVEL || 'info',
-  
   // Maximum number of messages to keep in conversation history
   maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH || '10', 10),
-  
-  // Discord client ID - required for registering slash commands
+  // Log level
+  logLevel: process.env.LOG_LEVEL || 'info',
+  // Discord client ID
   clientId: process.env.CLIENT_ID,
-  
-  // Optional environment flag - can be used to adjust behavior based on environment
-  environment: process.env.NODE_ENV || 'development',
 };
-
-// Validate required configuration values
-const requiredVars = ['token', 'openaiApiKey', 'clientId'];
-const missingVars = requiredVars.filter(varName => !config[varName]);
-
-if (missingVars.length > 0) {
-  console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
-  console.error('Please check your .env file or environment configuration.');
-  process.exit(1);
-}
-
-module.exports = config;
