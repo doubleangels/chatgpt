@@ -1,6 +1,6 @@
 const { Events, Collection } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
-const { splitMessage, processGifUrls } = require('../utils/messageUtils');
+const { splitMessage } = require('../utils/messageUtils');
 const logger = require('../logger')('events/messageCreate.js');
 const { maxHistoryLength } = require('../config');
 const Sentry = require('../sentry');
@@ -35,7 +35,7 @@ module.exports = {
           logger.debug(`Message is a reply to bot's message: ${referencedMessage.id}`);
         }
       } catch (error) {
-        logger.error(`Failed to fetch referenced message: ${error.message}`);
+        logger.error(`Failed to fetch referenced message: ${error}`);
         Sentry.captureException(error, {
           extra: {
             context: 'fetchReferencedMessage',
@@ -46,18 +46,17 @@ module.exports = {
       }
     }
     
-    // Check if the bot should process this message
+    // Check if the bot should process this message - only respond to mentions or replies
     const hasBotMention = message.content.includes(botMention);
-    const hasAttachments = message.attachments.size > 0;
     
-    // Process only if the bot is mentioned, is a reply to the bot, or has attachments
-    if (!hasBotMention && !isReplyToBot && !hasAttachments) {
+    // Process only if the bot is mentioned or is a reply to the bot
+    if (!hasBotMention && !isReplyToBot) {
       return;
     }
     
     // Start typing indicator to show the bot is processing
     await message.channel.sendTyping().catch(err => {
-      logger.warn(`Failed to send typing indicator: ${err.message}`);
+      logger.warn(`Failed to send typing indicator: ${err}`);
     });
     
     logger.info(`Bot triggered by ${message.author.tag} in #${message.channel.name}`, {
@@ -65,38 +64,11 @@ module.exports = {
       channelId: message.channel.id,
       guildId: message.guild?.id,
       hasMention: hasBotMention,
-      isReply: isReplyToBot,
-      hasAttachments: hasAttachments
+      isReply: isReplyToBot
     });
     
     // Process user message - replace bot mention with a generic name
     const userText = message.content.replace(botMention, '@ChatGPT').trim();
-    
-    // Process image attachments
-    const imageUrls = [];
-    message.attachments.forEach(attachment => {
-      if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-        imageUrls.push(attachment.url);
-        logger.debug(`Processing image attachment: ${attachment.url}`);
-      }
-    });
-    
-    // Process GIFs from links in the message
-    const gifUrls = await processGifUrls(userText);
-    imageUrls.push(...gifUrls);
-    
-    // Prepare user message parts for OpenAI API
-    const userMessageParts = [];
-    
-    // Add text content if not empty
-    if (userText) {
-      userMessageParts.push({ type: 'text', text: userText });
-    }
-    
-    // Add image URLs
-    imageUrls.forEach(url => {
-      userMessageParts.push({ type: 'image_url', image_url: { url } });
-    });
     
     // Initialize conversation history for this channel if it doesn't exist
     if (!client.conversationHistory.has(message.channelId)) {
@@ -105,7 +77,7 @@ module.exports = {
       client.conversationHistory.set(message.channelId, [
         {
           role: 'system',
-          content: `You are a helpful assistant that can analyze text, images, videos, and GIFs.
+          content: `You are a helpful assistant.
                    The users that you help know that you can't send messages on their behalf.
                    Please send responses in a clear and concise manner, using Discord message formatting.
                    Limit responses to less than 2000 characters.
@@ -130,7 +102,7 @@ module.exports = {
     logger.debug(`Adding user message to conversation history`);
     conversationHistory.push({
       role: 'user',
-      content: userMessageParts
+      content: userText
     });
     
     // Ensure history doesn't exceed maximum length
@@ -184,10 +156,7 @@ module.exports = {
       
     } catch (error) {
       // Log and track errors
-      logger.error(`Error processing message: ${error.message}`, {
-        stack: error.stack,
-        messageId: message.id
-      });
+      logger.error(`Error processing message: ${error}`);
       
       Sentry.captureException(error, {
         extra: {
