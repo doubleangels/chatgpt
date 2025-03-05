@@ -1,52 +1,15 @@
 name: Dev CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - dev
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install project dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Install code-quality dependencies
-        run: |
-          pip install isort pylint
-
-      - name: Run pylint (lint)
-        run: |
-          pylint . --errors-only
-
-      - name: Check import order with isort
-        run: |
-          isort . --check --diff
-
   build-and-push:
     name: build-and-push-dev-image
     runs-on: ubuntu-latest
-    needs: [lint]
     concurrency: build-${{ github.ref_name }}
     permissions:
       contents: read
@@ -87,8 +50,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/chatgpt:dev
-            ghcr.io/${{ github.repository_owner }}/chatgpt:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/nova:dev
+            ghcr.io/${{ github.repository_owner }}/nova:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -117,11 +80,11 @@ jobs:
           fetch-depth: 0
 
       - name: Create Sentry release
-        uses: getsentry/action-release@v1
+        uses: getsentry/action-release@v3
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: doubleangels
-          SENTRY_PROJECT: chatgpt
+          SENTRY_PROJECT: nova
         with:
           environment: production
           ignore_missing: true

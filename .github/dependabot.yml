@@ -7,3 +7,11 @@ updates:
     target-branch: "dev"
     commit-message:
       prefix: "[Github Actions]"
+  
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: "daily"
+    target-branch: "dev"
+    commit-message:
+      prefix: "[NPM]"
