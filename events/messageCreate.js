@@ -6,6 +6,13 @@ const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
 const Sentry = require('../sentry');
 
+// Define a constant for the system message
+const SYSTEM_MESSAGE = `You are a helpful assistant.
+The users that you help know that you can't send messages on their behalf.
+Please send responses in a clear and concise manner.
+Always limit responses to less than 2000 characters.
+Maintain conversation continuity and context.`;
+
 module.exports = {
   name: Events.MessageCreate,
   /**
@@ -77,18 +84,20 @@ module.exports = {
 
     // Initialize conversation history for this channel if it doesn't exist
     if (!client.conversationHistory.has(message.channelId)) {
-      logger.info(`Initializing new conversation history for channel #${message.channel.name} (${message.channelId}).`);
+      try {
+        logger.info(`Initializing new conversation history for channel #${message.channel.name} (${message.channelId}).`);
 
-      client.conversationHistory.set(message.channelId, [
-        {
-          role: 'system',
-          content: `You are a helpful assistant.
-                   The users that you help know that you can't send messages on their behalf.
-                   Please send responses in a clear and concise manner.
-                   Always limit responses to less than 2000 characters.
-                   Maintain conversation continuity and context.`
-        }
-      ]);
+        client.conversationHistory.set(message.channelId, [
+          {
+            role: 'system',
+            content: SYSTEM_MESSAGE
+          }
+        ]);
+
+        logger.info(`Conversation history initialized successfully for channel #${message.channel.name}.`);
+      } catch (error) {
+        logger.error(`Failed to initialize conversation history for channel #${message.channel.name}: ${error.message}`);
+      }
     }
 
     // Get conversation history for this channel
