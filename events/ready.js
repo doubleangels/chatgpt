@@ -41,13 +41,20 @@ module.exports = {
       });
       
       // Log information about connected guilds
-      client.guilds.cache.forEach(guild => {
-        logger.info(`Connected to guild: ${guild.name}`, {
-          guildId: guild.id,
-          memberCount: guild.memberCount,
-          channelCount: guild.channels.cache.size
+      try {
+        client.guilds.cache.forEach(guild => {
+          logger.info(`Connected to guild: ${guild.name}`, {
+            guildId: guild.id,
+            memberCount: guild.memberCount,
+            channelCount: guild.channels.cache.size
+          });
         });
-      });
+      } catch (guildError) {
+        logger.error("Failed to log connected guilds:", {
+          error: guildError.message,
+          stack: guildError.stack
+        });
+      }
       
     } catch (error) {
       logger.error("Failed to set bot presence:", { 
