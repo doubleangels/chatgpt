@@ -1,13 +1,13 @@
-const path = require('path')
+const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
 /**
- * Splits a message into chunks that fit within Discord's character limit
- * Discord has a 2000 character limit per message, so longer messages need to be split
+ * Splits a message into chunks that fit within Discord's character limit.
+ * Discord has a 2000 character limit per message, so longer messages need to be split.
  * 
- * @param {string} text - The message text to split
- * @param {number} limit - Maximum characters per chunk (default: 2000)
- * @returns {Array<string>} - Array of message chunks
+ * @param {string} text - The message text to split.
+ * @param {number} [limit=2000] - Maximum characters per chunk (default: 2000).
+ * @returns {Array<string>} - Array of message chunks.
  */
 function splitMessage(text, limit = 2000) {
   // Return as-is if text is empty or within the limit
@@ -71,4 +71,37 @@ function splitMessage(text, limit = 2000) {
   return chunks;
 }
 
-module.exports = { splitMessage };
+/**
+ * Formats AI responses in Discord-compatible markdown.
+ * This function applies various markdown styles to the response text
+ * to ensure proper formatting in Discord messages.
+ * 
+ * @param {string} response - The AI response text to format.
+ * @returns {string} - The formatted response text.
+ */
+function formatResponseForDiscord(response) {
+  // Format bold text
+  response = response.replace(/(\*\*|__)(.*?)\1/g, '**$2**');
+  // Format italic text
+  response = response.replace(/(\*|_)(.*?)\1/g, '*$2*');
+  // Format underline text
+  response = response.replace(/(_)(.*?)\1/g, '*$2*');
+  // Format strikethrough text
+  response = response.replace(/~~(.*?)~~/g, '~~$1~~');
+  // Format inline code
+  response = response.replace(/`([^`]+)`/g, '`$1`');
+  // Format code blocks
+  response = response.replace(/```([\s\S]*?)```/g, '```\n$1\n```');
+  // Format blockquotes
+  response = response.replace(/(^|\n)>(.*?)($|\n)/g, '\n> $2\n');
+  // Format unordered lists
+  response = response.replace(/(^|\n)([\*\-\+]) (.*?)(?=\n|$)/g, '$1- $3');
+  // Format ordered lists
+  response = response.replace(/(^|\n)(\d+)\. (.*?)(?=\n|$)/g, '$1$2. $3');
+  // Format links
+  response = response.replace(/\[(.*?)\]\((.*?)\)/g, '[$1]($2)');
+  
+  return response;
+}
+
+module.exports = { splitMessage, formatResponseForDiscord };
