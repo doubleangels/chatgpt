@@ -1,6 +1,6 @@
-const { Events, Collection } = require('discord.js');
+const { Events } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
-const { splitMessage, formatResponseForDiscord } = require('../utils/messageUtils'); // Import the formatting function
+const { splitMessage } = require('../utils/messageUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
@@ -140,11 +140,8 @@ module.exports = {
         return;
       }
 
-      // Format the response for Discord
-      const formattedReply = formatResponseForDiscord(reply);
-
       // Split response if needed and send
-      const chunks = splitMessage(formattedReply);
+      const chunks = splitMessage(reply); // Removed formatting
       logger.info(`Sending AI response in ${chunks.length} chunks for message ${message.id} in channel ${message.channelId}.`);
 
       for (let i = 0; i < chunks.length; i++) {
@@ -168,7 +165,7 @@ module.exports = {
       logger.debug(`Adding AI response to conversation history for channel ${message.channelId}.`);
       conversationHistory.push({
         role: 'assistant',
-        content: formattedReply
+        content: reply // Directly using the reply without formatting
       });
 
     } catch (error) {

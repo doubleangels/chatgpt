@@ -1,6 +1,6 @@
 const { Events, Collection } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
-const { splitMessage, formatResponseForDiscord } = require('../utils/messageUtils'); // Import the formatting function
+const { splitMessage } = require('../utils/messageUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
