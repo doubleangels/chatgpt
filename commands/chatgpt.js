@@ -13,11 +13,13 @@ module.exports = {
     .addStringOption(option => 
       option.setName('prompt')
         .setDescription('What is your question or prompt for ChatGPT?')
-        .setRequired(true)),
+        .setRequired(true))
+    .setDMPermission(true),
   
   /**
    * Executes the ChatGPT slash command
    * Processes the user's prompt and generates an AI response
+   * Works in both server channels and DMs
    * 
    * @param {Interaction} interaction - The Discord interaction object
    */
@@ -28,18 +30,24 @@ module.exports = {
     // Defer reply to show the bot is processing
     await interaction.deferReply();
     
-    logger.info(`ChatGPT command used by ${interaction.user.tag} (${interaction.user.id}) in #${interaction.channel.name} (${interaction.channel.id}).`, {
+    // Determine if this is a DM or server channel
+    const isDM = !interaction.guild;
+    const channelName = isDM ? 'DM' : `#${interaction.channel.name}`;
+    const channelId = interaction.channelId;
+    
+    logger.info(`ChatGPT command used by ${interaction.user.tag} (${interaction.user.id}) in ${channelName} (${channelId}).`, {
       userId: interaction.user.id,
-      channelId: interaction.channel.id,
+      channelId: channelId,
       guildId: interaction.guild?.id,
-      interactionId: interaction.id
+      interactionId: interaction.id,
+      isDM: isDM
     });
     
     // Initialize conversation history for this channel if it doesn't exist
-    if (!client.conversationHistory.has(interaction.channelId)) {
-      logger.info(`Initializing new conversation history for channel #${interaction.channel.name} (${interaction.channelId}).`);
+    if (!client.conversationHistory.has(channelId)) {
+      logger.info(`Initializing new conversation history for ${channelName} (${channelId}).`);
       
-      client.conversationHistory.set(interaction.channelId, [
+      client.conversationHistory.set(channelId, [
         {
           role: 'system',
           content: `You are a helpful assistant.
@@ -52,10 +60,10 @@ module.exports = {
     }
     
     // Get conversation history for this channel
-    const conversationHistory = client.conversationHistory.get(interaction.channelId);
+    const conversationHistory = client.conversationHistory.get(channelId);
     
     // Add user message to history
-    logger.debug(`Adding user prompt from interaction (${interaction.id}) to conversation history for channel ${interaction.channelId}.`);
+    logger.debug(`Adding user prompt from interaction (${interaction.id}) to conversation history for channel ${channelId}.`);
     conversationHistory.push({
       role: 'user',
       content: prompt
@@ -64,7 +72,7 @@ module.exports = {
     // Ensure history doesn't exceed maximum length
     // Keep the system message and trim older messages
     if (conversationHistory.length > maxHistoryLength + 1) { // +1 for system message
-      logger.debug(`Trimming conversation history for channel ${interaction.channelId} (current: ${conversationHistory.length}, max: ${maxHistoryLength + 1}).`);
+      logger.debug(`Trimming conversation history for channel ${channelId} (current: ${conversationHistory.length}, max: ${maxHistoryLength + 1}).`);
       
       while (conversationHistory.length > maxHistoryLength + 1) {
         if (conversationHistory[0].role === 'system') {
@@ -84,14 +92,14 @@ module.exports = {
       const reply = await generateAIResponse(conversationHistory);
       
       if (!reply) {
-        logger.warn(`Failed to generate AI response for interaction ${interaction.id} in channel ${interaction.channelId}.`);
+        logger.warn(`Failed to generate AI response for interaction ${interaction.id} in channel ${channelId}.`);
         await interaction.editReply("⚠️ I couldn't generate a response.");
         return;
       }
       
       // Split response if needed and send
       const chunks = splitMessage(reply);
-      logger.info(`Sending AI response in ${chunks.length} chunks for interaction ${interaction.id} in channel ${interaction.channelId}.`);
+      logger.info(`Sending AI response in ${chunks.length} chunks for interaction ${interaction.id} in channel ${channelId}.`);
       
       if (chunks.length === 1) {
         // Single chunk response
@@ -107,7 +115,7 @@ module.exports = {
       }
       
       // Add AI response to history
-      logger.debug(`Adding AI response to conversation history for channel ${interaction.channelId}.`);
+      logger.debug(`Adding AI response to conversation history for channel ${channelId}.`);
       conversationHistory.push({
         role: 'assistant',
         content: reply
@@ -118,7 +126,8 @@ module.exports = {
       logger.error(`Error processing interaction ${interaction.id}: ${error.message}`, {
         error: error.stack,
         userId: interaction.user.id,
-        channelId: interaction.channel.id
+        channelId: channelId,
+        isDM: isDM
       });
       
       Sentry.captureException(error, {
@@ -126,7 +135,8 @@ module.exports = {
           context: 'chatgptCommand',
           interactionId: interaction.id,
           userId: interaction.user.id,
-          channelId: interaction.channel.id
+          channelId: channelId,
+          isDM: isDM
         }
       });
       
