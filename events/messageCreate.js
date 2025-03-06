@@ -4,7 +4,6 @@ const { splitMessage } = require('../utils/messageUtils');
 const path = require('path')
 const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
-const Sentry = require('../sentry');
 
 module.exports = {
   name: Events.MessageCreate,
@@ -39,13 +38,6 @@ module.exports = {
         logger.error(`Failed to fetch referenced message ${message.reference.messageId}: ${error.message}.`, {
           error: error.stack,
           messageId: message.id
-        });
-        Sentry.captureException(error, {
-          extra: {
-            context: 'fetchReferencedMessage',
-            messageId: message.id,
-            referenceId: message.reference.messageId
-          }
         });
       }
     }
@@ -166,16 +158,6 @@ module.exports = {
         userId: message.author.id,
         channelId: message.channel.id
       });
-      
-      Sentry.captureException(error, {
-        extra: {
-          context: 'messageProcessing',
-          messageId: message.id,
-          userId: message.author.id,
-          channelId: message.channel.id
-        }
-      });
-      
       // Send error message to user
       await message.reply("⚠️ An error occurred while processing your request.");
     }
