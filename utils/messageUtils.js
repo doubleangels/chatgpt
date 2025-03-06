@@ -80,6 +80,9 @@ function splitMessage(text, limit = 2000) {
  * @returns {string} - The formatted response text.
  */
 function formatResponseForDiscord(response) {
+  // Escape special characters to prevent rendering issues
+  response = response.replace(/([\\`*_{}[\]()<>])/g, '\\$1');
+
   // Format bold text
   response = response.replace(/(\*\*|__)(.*?)\1/g, '**$2**');
   // Format italic text
@@ -100,7 +103,25 @@ function formatResponseForDiscord(response) {
   response = response.replace(/(^|\n)(\d+)\. (.*?)(?=\n|$)/g, '$1$2. $3');
   // Format links
   response = response.replace(/\[(.*?)\]\((.*?)\)/g, '[$1]($2)');
+  // Format spoilers
+  response = response.replace(/\|\|([^|]+)\|\|/g, '||$1||'); // Example: ||hidden text||
   
+  // Convert URLs to clickable links
+  response = response.replace(/(https?:\/\/[^\s]+)/g, '<$1>');
+
+  // Support user mentions
+  response = response.replace(/<@!?(\d+)>/g, (match, userId) => {
+    return `<@${userId}>`; // Maintain mention format
+  });
+
+  // Optionally add emoji support
+  response = response.replace(/:([a-zA-Z0-9_]+):/g, (match, p1) => {
+    return `<:${p1}:${emojiIdMapping[p1]}>`; // Replace with actual emoji ID mapping
+  });
+
+  // Handle nested lists (basic example)
+  response = response.replace(/(^|\n)([\*\-\+]) ([\*\-\+]) (.*?)(?=\n|$)/g, '$1  $2 $4'); // Indent nested items
+
   return response;
 }
 
