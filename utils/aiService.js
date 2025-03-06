@@ -4,7 +4,6 @@ const { splitMessage, formatResponseForDiscord } = require('../utils/messageUtil
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
-const Sentry = require('../sentry');
 
 // Define a constant for the system message
 const SYSTEM_MESSAGE = `You are a helpful assistant.
@@ -46,13 +45,6 @@ module.exports = {
       logger.error(`Failed to fetch referenced message ${message.reference.messageId}: ${error.message}.`, {
         error: error.stack,
         messageId: message.id
-      });
-      Sentry.captureException(error, {
-        extra: {
-          context: 'fetchReferencedMessage',
-          messageId: message.id,
-          referenceId: message.reference.messageId
-        }
       });
     }
 
@@ -185,15 +177,6 @@ module.exports = {
         error: error.stack,
         userId: message.author.id,
         channelId: message.channel.id
-      });
-
-      Sentry.captureException(error, {
-        extra: {
-          context: 'messageProcessing',
-          messageId: message.id,
-          userId: message.author.id,
-          channelId: message.channel.id
-        }
       });
 
       // Send error message to user
