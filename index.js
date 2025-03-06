@@ -54,13 +54,33 @@ for (const file of eventFiles) {
     const event = require(path.join(eventsPath, file));
     if (event.once) {
       client.once(event.name, (...args) => {
-        logger.debug("Executing once event:", { event: event.name });
-        event.execute(...args, client);
+        try {
+          logger.debug("Executing once event:", { event: event.name });
+          event.execute(...args, client);
+        } catch (error) {
+          Sentry.captureException(error, {
+            extra: {
+              context: 'executing_once_event',
+              eventName: event.name
+            }
+          });
+          logger.error("Error executing once event:", { event: event.name, error });
+        }
       });
     } else {
       client.on(event.name, (...args) => {
-        logger.debug("Executing event:", { event: event.name });
-        event.execute(...args, client);
+        try {
+          logger.debug("Executing event:", { event: event.name });
+          event.execute(...args, client);
+        } catch (error) {
+          Sentry.captureException(error, {
+            extra: {
+              context: 'executing_event',
+              eventName: event.name
+            }
+          });
+          logger.error("Error executing event:", { event: event.name, error });
+        }
       });
     }
     logger.info("Loaded event:", { event: event.name });
