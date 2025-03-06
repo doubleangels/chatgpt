@@ -33,28 +33,27 @@ module.exports = {
     let referencedMessage = null;
 
     // Process message reference (if it's a reply)
-    if (message.reference && message.reference.messageId) {
-      try {
-        // Fetch the message being replied to
+    try {
+      if (message.reference && message.reference.messageId) {
         referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
         isReplyToBot = referencedMessage.author.id === client.user.id;
 
         if (isReplyToBot) {
           logger.debug(`Message ${message.id} is a reply to bot's message: ${referencedMessage.id}`);
         }
-      } catch (error) {
-        logger.error(`Failed to fetch referenced message ${message.reference.messageId}: ${error.message}.`, {
-          error: error.stack,
-          messageId: message.id
-        });
-        Sentry.captureException(error, {
-          extra: {
-            context: 'fetchReferencedMessage',
-            messageId: message.id,
-            referenceId: message.reference.messageId
-          }
-        });
       }
+    } catch (error) {
+      logger.error(`Failed to fetch referenced message ${message.reference.messageId}: ${error.message}.`, {
+        error: error.stack,
+        messageId: message.id
+      });
+      Sentry.captureException(error, {
+        extra: {
+          context: 'fetchReferencedMessage',
+          messageId: message.id,
+          referenceId: message.reference.messageId
+        }
+      });
     }
 
     // Check if the bot should process this message - only respond to mentions or replies
@@ -66,9 +65,11 @@ module.exports = {
     }
 
     // Start typing indicator to show the bot is processing
-    await message.channel.sendTyping().catch(err => {
+    try {
+      await message.channel.sendTyping();
+    } catch (err) {
       logger.warn(`Failed to send typing indicator in channel ${message.channel.id}: ${err.message}.`);
-    });
+    }
 
     logger.info(`Bot triggered by ${message.author.tag} (${message.author.id}) in #${message.channel.name} (${message.channel.id}).`, {
       userId: message.author.id,
@@ -83,8 +84,8 @@ module.exports = {
     const userText = message.content.replace(botMention, '@ChatGPT').trim();
 
     // Initialize conversation history for this channel if it doesn't exist
-    if (!client.conversationHistory.has(message.channelId)) {
-      try {
+    try {
+      if (!client.conversationHistory.has(message.channelId)) {
         logger.info(`Initializing new conversation history for channel #${message.channel.name} (${message.channelId}).`);
 
         client.conversationHistory.set(message.channelId, [
@@ -95,9 +96,9 @@ module.exports = {
         ]);
 
         logger.info(`Conversation history initialized successfully for channel #${message.channel.name}.`);
-      } catch (error) {
-        logger.error(`Failed to initialize conversation history for channel #${message.channel.name}: ${error.message}`);
       }
+    } catch (error) {
+      logger.error(`Failed to initialize conversation history for channel #${message.channel.name}: ${error.message}`);
     }
 
     // Get conversation history for this channel
@@ -155,12 +156,19 @@ module.exports = {
       logger.info(`Sending AI response in ${chunks.length} chunks for message ${message.id} in channel ${message.channelId}.`);
 
       for (let i = 0; i < chunks.length; i++) {
-        if (i === 0) {
-          // First chunk is sent as a reply to maintain context
-          await message.reply(chunks[i]);
-        } else {
-          // Additional chunks are sent as follow-up messages
-          await message.channel.send(chunks[i]);
+        try {
+          if (i === 0) {
+            // First chunk is sent as a reply to maintain context
+            await message.reply(chunks[i]);
+          } else {
+            // Additional chunks are sent as follow-up messages
+            await message.channel.send(chunks[i]);
+          }
+        } catch (sendError) {
+          logger.error(`Failed to send chunk ${i + 1} for message ${message.id} in channel ${message.channelId}: ${sendError.message}`, {
+            error: sendError.stack,
+            messageId: message.id
+          });
         }
       }
 

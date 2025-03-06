@@ -17,12 +17,15 @@ const rest = new REST({ version: '10' }).setToken(config.token);
 (async () => {
   try {
     console.log('Started refreshing guild application (/) commands.');
-    
+
     const clientId = config.clientId;
     await rest.put(Routes.applicationCommands(clientId), { body: commands });
-    
+
     console.log('Successfully reloaded guild application (/) commands.');
   } catch (error) {
-    console.error(error);
+    console.error('Error while refreshing commands:', {
+      message: error.message,
+      stack: error.stack
+    });
   }
 })();
