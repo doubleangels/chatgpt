@@ -25,51 +25,39 @@ module.exports = {
       guildId: interaction.guildId
     });
     
-    try {
-      // Check if there's conversation history for this channel
-      if (client.conversationHistory.has(channelId)) {
-        // Preserve system message if it exists
-        const systemMessage = client.conversationHistory.get(channelId).find(msg => msg.role === 'system');
-        
-        // Get the current history length for logging
-        const currentLength = client.conversationHistory.get(channelId).length;
-        
-        if (systemMessage) {
-          // Reset history but keep the system message
-          client.conversationHistory.set(channelId, [systemMessage]);
-          logger.info(`Conversation history reset in channel ${channelId}, preserved system message`, {
-            previousLength: currentLength,
-            newLength: 1
-          });
-        } else {
-          // No system message found, delete the entire history
-          client.conversationHistory.delete(channelId);
-          logger.info(`Conversation history completely deleted for channel ${channelId}`, {
-            previousLength: currentLength
-          });
-        }
-        
-        // Inform the user that the reset was successful
-        await interaction.reply({ 
-          content: '🗑️ **Conversation history has been reset for this channel.**', 
-          ephemeral: true 
+    // Check if there's conversation history for this channel
+    if (client.conversationHistory.has(channelId)) {
+      // Preserve system message if it exists
+      const systemMessage = client.conversationHistory.get(channelId).find(msg => msg.role === 'system');
+      
+      // Get the current history length for logging
+      const currentLength = client.conversationHistory.get(channelId).length;
+      
+      if (systemMessage) {
+        // Reset history but keep the system message
+        client.conversationHistory.set(channelId, [systemMessage]);
+        logger.info(`Conversation history reset in channel ${channelId}, preserved system message`, {
+          previousLength: currentLength,
+          newLength: 1
         });
       } else {
-        // No conversation history found
-        logger.warn(`Reset command failed - no conversation history found for channel ${channelId}`);
-        await interaction.reply({ 
-          content: '⚠️ No conversation history found for this channel.', 
-          ephemeral: true 
+        // No system message found, delete the entire history
+        client.conversationHistory.delete(channelId);
+        logger.info(`Conversation history completely deleted for channel ${channelId}`, {
+          previousLength: currentLength
         });
       }
-    } catch (error) {
-      logger.error(`Error executing reset command in channel ${channelId}:`, {
-        error: error.message,
-        userId: interaction.user.id,
-        guildId: interaction.guildId
-      });
+      
+      // Inform the user that the reset was successful
       await interaction.reply({ 
-        content: '❌ An error occurred while trying to reset the conversation history.', 
+        content: '🗑️ **Conversation history has been reset for this channel.**', 
+        ephemeral: true 
+      });
+    } else {
+      // No conversation history found
+      logger.warn(`Reset command failed - no conversation history found for channel ${channelId}`);
+      await interaction.reply({ 
+        content: '⚠️ No conversation history found for this channel.', 
         ephemeral: true 
       });
     }

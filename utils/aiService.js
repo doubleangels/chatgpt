@@ -2,6 +2,7 @@ const { OpenAI } = require('openai');
 const { openaiApiKey, modelName } = require('../config');
 const path = require('path')
 const logger = require('../logger')(path.basename(__filename));
+const Sentry = require('../sentry');
 
 // Initialize OpenAI client with API key from config
 const openai = new OpenAI({
@@ -57,6 +58,18 @@ async function generateAIResponse(conversation) {
       errorType: error.type,
       errorCode: error.code,
       statusCode: error.status
+    });
+    Sentry.captureException(error, {
+      extra: {
+        context: 'generateAIResponse',
+        conversationLength: conversation?.length,
+        model: modelName,
+        errorDetails: {
+          type: error.type,
+          code: error.code,
+          status: error.status
+        }
+      }
     });
     return '';
   }

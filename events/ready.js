@@ -50,12 +50,10 @@ module.exports = {
       });
       
     } catch (error) {
-      // Enhanced error logging
-      logger.error("Failed to set bot presence or log guilds:", { 
+      logger.error("Failed to set bot presence:", { 
         error: error.message,
         stack: error.stack
       });
-      return; // Exit the function if an error occurs
     }
 
     logger.info("Bot is ready and setup complete!", {
