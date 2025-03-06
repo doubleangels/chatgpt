@@ -84,8 +84,8 @@ module.exports = {
           role: 'system',
           content: `You are a helpful assistant.
                    The users that you help know that you can't send messages on their behalf.
-                   Please send responses in a clear and concise manner, ALWAYS using Discord compatible markdown formatting.
-                   Limit responses to less than 2000 characters.
+                   Please send responses in a clear and concise manner.
+                   Always limit responses to less than 2000 characters.
                    Maintain conversation continuity and context.`
         }
       ]);
