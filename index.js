@@ -28,29 +28,51 @@ client.conversationHistory = new Collection();
 // Load and register command files.
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
 for (const file of commandFiles) {
-  const command = require(path.join(commandsPath, file));
-  client.commands.set(command.data.name, command);
-  logger.info("Loaded command:", { command: command.data.name });
+  try {
+    const command = require(path.join(commandsPath, file));
+    client.commands.set(command.data.name, command);
+    logger.info("Loaded command:", { command: command.data.name });
+  } catch (error) {
+    Sentry.captureException(error, {
+      extra: {
+        context: 'loading_command',
+        commandFile: file
+      }
+    });
+    logger.error("Error loading command:", { file, error });
+  }
 }
 
 // Load and register event files.
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
 for (const file of eventFiles) {
-  const event = require(path.join(eventsPath, file));
-  if (event.once) {
-    client.once(event.name, (...args) => {
-      logger.debug("Executing once event:", { event: event.name });
-      event.execute(...args, client);
+  try {
+    const event = require(path.join(eventsPath, file));
+    if (event.once) {
+      client.once(event.name, (...args) => {
+        logger.debug("Executing once event:", { event: event.name });
+        event.execute(...args, client);
+      });
+    } else {
+      client.on(event.name, (...args) => {
+        logger.debug("Executing event:", { event: event.name });
+        event.execute(...args, client);
+      });
+    }
+    logger.info("Loaded event:", { event: event.name });
+  } catch (error) {
+    Sentry.captureException(error, {
+      extra: {
+        context: 'loading_event',
+        eventFile: file
+      }
     });
-  } else {
-    client.on(event.name, (...args) => {
-      logger.debug("Executing event:", { event: event.name });
-      event.execute(...args, client);
-    });
+    logger.error("Error loading event:", { file, error });
   }
-  logger.info("Loaded event:", { event: event.name });
 }
 
 // Event triggered when the bot is ready.
@@ -152,7 +174,6 @@ client.on('interactionCreate', async interaction => {
     }
   }
 });
-
 
 // Log the bot in using the token from the config file.
 client.login(config.token).catch(err => {
