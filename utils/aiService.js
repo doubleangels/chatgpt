@@ -1,8 +1,7 @@
 const { OpenAI } = require('openai');
 const { openaiApiKey, modelName } = require('../config');
-const path = require('path')
+const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
-const Sentry = require('../sentry');
 
 // Initialize OpenAI client with API key from config
 const openai = new OpenAI({
@@ -21,14 +20,23 @@ async function generateAIResponse(conversation) {
     // Log the conversation being sent (sensitive data, use debug level)
     logger.debug(`Sending conversation to OpenAI API using model: ${modelName}.`);
     
-    // Make API request to OpenAI
-    const response = await openai.chat.completions.create({
-      model: modelName,
-      messages: conversation,
-      max_tokens: 500,
-      temperature: 0.7,
-    });
-    
+    let response;
+    try {
+      // Make API request to OpenAI
+      response = await openai.chat.completions.create({
+        model: modelName,
+        messages: conversation,
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+    } catch (apiError) {
+      logger.error(`API request failed: ${apiError.message}`, {
+        error: apiError.stack,
+        model: modelName
+      });
+      return '';
+    }
+
     // Log successful API response
     logger.debug(`Received response from OpenAI: choices: ${response.choices?.length || 0}, completion_tokens: ${response.usage?.completion_tokens}, total_tokens: ${response.usage?.total_tokens}`);
     
@@ -58,18 +66,6 @@ async function generateAIResponse(conversation) {
       errorType: error.type,
       errorCode: error.code,
       statusCode: error.status
-    });
-    Sentry.captureException(error, {
-      extra: {
-        context: 'generateAIResponse',
-        conversationLength: conversation?.length,
-        model: modelName,
-        errorDetails: {
-          type: error.type,
-          code: error.code,
-          status: error.status
-        }
-      }
     });
     return '';
   }

@@ -17,11 +17,11 @@
     "homepage": "https://github.com/doubleangels/chatgpt#readme",
     "dependencies": {
         "@sentry/node": "^9.3.0",
-        "@sentry/profiling-node": "^9.4.0",
+        "@sentry/profiling-node": "^9.5.0",
         "discord.js": "^14.18.0",
         "dotenv": "^16.4.7",
         "node": "^23.9.0",
-        "openai": "^4.86.1",
+        "openai": "^4.86.2",
         "winston": "^3.17.0"
     }
 }
