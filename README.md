@@ -1,6 +1,9 @@
 # chatgpt
 
-![Logo](logo.png)
+<div align="center">
+  <img src="logo.png" alt="Logo" width="250">
+</div>
+<br>
 
 A lightweight Discord bot powered by ChatGPT and OpenAI, designed to provide interactive conversational capabilities right within your Discord server.
 
