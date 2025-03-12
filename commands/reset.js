@@ -6,7 +6,7 @@ module.exports = {
   // Define the command as a slash command with administrator permissions
   data: new SlashCommandBuilder()
     .setName('reset')
-    .setDescription('Reset the conversation history for this channel')
+    .setDescription('Reset ALL conversation history for this channel.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     
   /**

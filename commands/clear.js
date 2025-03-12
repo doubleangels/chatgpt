@@ -6,7 +6,7 @@ module.exports = {
   // Define the command as a slash command with no special permissions
   data: new SlashCommandBuilder()
     .setName('clear')
-    .setDescription('Clear your conversation history for this channel'),
+    .setDescription('Clear your conversation history for this channel.'),
 
   /**
    * Executes the clear command
