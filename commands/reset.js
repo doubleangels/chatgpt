@@ -51,7 +51,7 @@ module.exports = {
 
         // Inform the user that the reset was successful
         await interaction.reply({ 
-          content: '🗑️ **Conversation history has been reset for this channel.**', 
+          content: '🗑️ Conversation history has been reset for this channel.', 
           ephemeral: true 
         });
       } else {
