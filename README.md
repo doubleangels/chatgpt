@@ -43,8 +43,6 @@ networks:
 
 Here is a table of all available environment variables:
 
-Here's a formatted table for your environment variables:
-
 | Variable | Description | Required | Default | Example |
 | --- | --- | :---: | :---: | --- |
 | `DISCORD_BOT_TOKEN` | Authentication token for your Discord bot | ✅ | - | - |
