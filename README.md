@@ -38,3 +38,17 @@ networks:
   default:
     name: chatgpt
 ```
+
+## Environment Variables
+
+Here is a table of all available environment variables:
+
+Here's a formatted table for your environment variables:
+
+| Variable | Description | Required | Default | Example |
+| --- | --- | :---: | :---: | --- |
+| `DISCORD_BOT_TOKEN` | Authentication token for your Discord bot | ✅ | - | - |
+| `OPENAI_API_KEY` | API key for OpenAI services | ✅ | - | - |
+| `MODEL_NAME` | The name of the OpenAI model to use | ❌ | `gpt-3.5-turbo` | `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo` |
+| `MAX_HISTORY_LENGTH` | Maximum number of messages to keep in conversation history | ❌ | `10` | `20` |
+| `LOG_LEVEL` | Determines the verbosity of logs | ❌ | `info` | `error`, `warn`, `info`, `debug` |
