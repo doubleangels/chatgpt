@@ -19,7 +19,7 @@ module.exports = {
     const channelId = interaction.channelId;
     const userId = interaction.user.id;
 
-    logger.info(`Clear command initiated by ${interaction.user.tag} in channel ${interaction.channel.name}`, {
+    logger.info(`Clear command initiated by ${interaction.user.tag} in channel ${interaction.channel.name}:`, {
       userId: userId,
       channelId: channelId,
       guildId: interaction.guildId
@@ -40,7 +40,7 @@ module.exports = {
           // Clear the user's conversation history
           userHistoryMap.delete(userId);
 
-          logger.info(`User conversation history cleared in channel ${channelId}`, {
+          logger.info(`User conversation history cleared in channel ${channelId}:`, {
             userId: userId,
             previousLength: currentLength
           });
@@ -52,7 +52,7 @@ module.exports = {
           });
         } else {
           // No conversation history found for the user
-          logger.warn(`Clear command failed - no conversation history found for user ${userId} in channel ${channelId}`);
+          logger.warn(`Clear command failed - no conversation history found for user ${userId} in channel ${channelId}.`);
           await interaction.reply({ 
             content: '⚠️ No conversation history found for you in this channel.', 
             ephemeral: true 
@@ -60,7 +60,7 @@ module.exports = {
         }
       } else {
         // No conversation history for the channel
-        logger.warn(`Clear command failed - no conversation history for channel ${channelId}`);
+        logger.warn(`Clear command failed - no conversation history for channel ${channelId}.`);
         await interaction.reply({ 
           content: '⚠️ No conversation history found for this channel.', 
           ephemeral: true 

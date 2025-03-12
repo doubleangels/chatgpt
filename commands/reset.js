@@ -40,14 +40,14 @@ module.exports = {
           // Reset history but keep the system message
           userHistoryMap.clear();
           userHistoryMap.set('system', systemMessage);
-          logger.info(`Conversation history reset in channel ${channelId}, preserved system message`, {
+          logger.info(`Conversation history reset in channel ${channelId} - preserved system message:`, {
             previousLength: currentLength,
             newLength: 1
           });
         } else {
           // No system message found, delete the entire history
           client.conversationHistory.delete(channelId);
-          logger.info(`Conversation history completely deleted for channel ${channelId}`, {
+          logger.info(`Conversation history completely deleted for channel ${channelId}:`, {
             previousLength: currentLength
           });
         }
@@ -59,7 +59,7 @@ module.exports = {
         });
       } else {
         // No conversation history found
-        logger.warn(`Reset command failed - no conversation history found for channel ${channelId}`);
+        logger.warn(`Reset command failed - no conversation history found for channel ${channelId}.`);
         await interaction.reply({ 
           content: '⚠️ No conversation history found for this channel.', 
           ephemeral: true 
