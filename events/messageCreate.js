@@ -1,4 +1,4 @@
-const { Events, Collection } = require('discord.js');
+const { Events } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage } = require('../utils/messageUtils');
 const path = require('path');
@@ -73,50 +73,54 @@ module.exports = {
     if (!client.conversationHistory.has(message.channelId)) {
       logger.info(`Initializing new conversation history for channel #${message.channel.name} (${message.channelId}).`);
 
-      client.conversationHistory.set(message.channelId, [
+      client.conversationHistory.set(message.channelId, new Map());
+    }
+
+    // Initialize user history if it doesn't exist
+    if (!client.conversationHistory.get(message.channelId).has(message.author.id)) {
+      client.conversationHistory.get(message.channelId).set(message.author.id, [
         {
           role: 'system',
           content: `You are a helpful assistant.
-                   The users that you help know that you can't send messages on their behalf.
-                   Please send responses in a clear and concise manner, using Discord message formatting.
-                   Limit responses to less than 2000 characters.
-                   Maintain conversation continuity and context.`
+                    The users that you help know that you can't send messages on their behalf.
+                    Please send responses in a clear and concise manner, using Discord message formatting.
+                    Limit responses to less than 2000 characters.
+                    Maintain conversation continuity and context.`
         }
       ]);
     }
 
-    // Get conversation history for this channel
-    const conversationHistory = client.conversationHistory.get(message.channelId);
+    // Get conversation history for the user
+    const userHistory = client.conversationHistory.get(message.channelId).get(message.author.id);
 
     // Add referenced message to history if replying to bot
     if (isReplyToBot && referencedMessage) {
-      logger.debug(`Adding bot's previous response to conversation history for channel ${message.channelId}.`);
-      conversationHistory.push({
+      logger.debug(`Adding bot's previous response to conversation history for user ${message.author.id} in channel ${message.channelId}.`);
+      userHistory.push({
         role: 'assistant',
         content: referencedMessage.content
       });
     }
 
     // Add user message to history
-    logger.debug(`Adding user message (${message.id}) to conversation history for channel ${message.channelId}.`);
-    conversationHistory.push({
+    logger.debug(`Adding user message (${message.id}) to conversation history for user ${message.author.id}.`);
+    userHistory.push({
       role: 'user',
       content: userText
     });
 
     // Ensure history doesn't exceed maximum length
-    // Keep the system message and trim older messages
-    if (conversationHistory.length > maxHistoryLength + 1) { // +1 for system message
-      logger.debug(`Trimming conversation history for channel ${message.channelId} (current: ${conversationHistory.length}, max: ${maxHistoryLength + 1}).`);
+    if (userHistory.length > maxHistoryLength + 1) { // +1 for system message
+      logger.debug(`Trimming conversation history for user ${message.author.id} in channel ${message.channelId} (current: ${userHistory.length}, max: ${maxHistoryLength + 1}).`);
 
-      while (conversationHistory.length > maxHistoryLength + 1) {
-        if (conversationHistory[0].role === 'system') {
+      while (userHistory.length > maxHistoryLength + 1) {
+        if (userHistory[0].role === 'system') {
           // Skip the system message
-          if (conversationHistory.length > 1) {
-            conversationHistory.splice(1, 1);
+          if (userHistory.length > 1) {
+            userHistory.splice(1, 1);
           }
         } else {
-          conversationHistory.shift();
+          userHistory.shift();
         }
       }
     }
@@ -124,7 +128,7 @@ module.exports = {
     try {
       // Generate AI response
       logger.info(`Generating AI response for message ${message.id} from ${message.author.tag} (${message.author.id}).`);
-      const reply = await generateAIResponse(conversationHistory);
+      const reply = await generateAIResponse(userHistory);
 
       if (!reply) {
         logger.warn(`Failed to generate AI response for message ${message.id} in channel ${message.channelId}.`);
@@ -154,8 +158,8 @@ module.exports = {
       }
 
       // Add AI response to history
-      logger.debug(`Adding AI response to conversation history for channel ${message.channelId}.`);
-      conversationHistory.push({
+      logger.debug(`Adding AI response to conversation history for user ${message.author.id} in channel ${message.channelId}.`);
+      userHistory.push({
         role: 'assistant',
         content: reply
       });

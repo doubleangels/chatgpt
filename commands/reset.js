@@ -28,15 +28,18 @@ module.exports = {
     try {
       // Check if there's conversation history for this channel
       if (client.conversationHistory.has(channelId)) {
+        const userHistoryMap = client.conversationHistory.get(channelId);
+
         // Preserve system message if it exists
-        const systemMessage = client.conversationHistory.get(channelId).find(msg => msg.role === 'system');
+        const systemMessage = userHistoryMap.get('system');
 
         // Get the current history length for logging
-        const currentLength = client.conversationHistory.get(channelId).length;
+        const currentLength = userHistoryMap.size;
 
         if (systemMessage) {
           // Reset history but keep the system message
-          client.conversationHistory.set(channelId, [systemMessage]);
+          userHistoryMap.clear();
+          userHistoryMap.set('system', systemMessage);
           logger.info(`Conversation history reset in channel ${channelId}, preserved system message`, {
             previousLength: currentLength,
             newLength: 1

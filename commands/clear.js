@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
@@ -26,31 +26,43 @@ module.exports = {
     });
 
     try {
-      // Check if there's conversation history for this channel and user
-      if (client.conversationHistory.has(channelId) && client.conversationHistory.get(channelId)[userId]) {
-        const userHistory = client.conversationHistory.get(channelId)[userId];
+      // Check if there's conversation history for this channel
+      if (client.conversationHistory.has(channelId)) {
+        const userHistoryMap = client.conversationHistory.get(channelId);
 
-        // Get the current history length for logging
-        const currentLength = userHistory.length;
+        // Check if there's history for the specific user
+        if (userHistoryMap.has(userId)) {
+          const userHistory = userHistoryMap.get(userId);
 
-        // Clear the user's conversation history
-        delete client.conversationHistory.get(channelId)[userId];
+          // Get the current history length for logging
+          const currentLength = userHistory.length;
 
-        logger.info(`User conversation history cleared in channel ${channelId}`, {
-          userId: userId,
-          previousLength: currentLength
-        });
+          // Clear the user's conversation history
+          userHistoryMap.delete(userId);
 
-        // Inform the user that the clear was successful
-        await interaction.reply({ 
-          content: '🗑️ Your conversation history has been cleared for this channel.', 
-          ephemeral: true 
-        });
+          logger.info(`User conversation history cleared in channel ${channelId}`, {
+            userId: userId,
+            previousLength: currentLength
+          });
+
+          // Inform the user that the clear was successful
+          await interaction.reply({ 
+            content: '🗑️ Your conversation history has been cleared for this channel.', 
+            ephemeral: true 
+          });
+        } else {
+          // No conversation history found for the user
+          logger.warn(`Clear command failed - no conversation history found for user ${userId} in channel ${channelId}`);
+          await interaction.reply({ 
+            content: '⚠️ No conversation history found for you in this channel.', 
+            ephemeral: true 
+          });
+        }
       } else {
-        // No conversation history found for the user
-        logger.warn(`Clear command failed - no conversation history found for user ${userId} in channel ${channelId}`);
+        // No conversation history for the channel
+        logger.warn(`Clear command failed - no conversation history for channel ${channelId}`);
         await interaction.reply({ 
-          content: '⚠️ No conversation history found for you in this channel.', 
+          content: '⚠️ No conversation history found for this channel.', 
           ephemeral: true 
         });
       }
