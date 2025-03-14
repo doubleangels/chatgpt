@@ -20,7 +20,7 @@
         "@sentry/profiling-node": "^9.5.0",
         "discord.js": "^14.18.0",
         "dotenv": "^16.4.7",
-        "node": "^23.9.0",
+        "node": "^23.10.0",
         "openai": "^4.87.3",
         "winston": "^3.17.0"
     }
