@@ -1,3 +1,7 @@
+const { ActivityType } = require('discord.js');
+const path = require('path');
+const logger = require('../logger')(path.basename(__filename));
+
 /**
  * Ready Event Handler
  * This module handles the Discord bot's ready event, which is triggered
@@ -5,10 +9,6 @@
  * 
  * @module events/ready
  */
-const { ActivityType } = require('discord.js');
-const path = require('path');
-const logger = require('../logger')(path.basename(__filename));
-
 module.exports = {
   name: 'ready',
   once: true,
