@@ -5,14 +5,14 @@ const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
 
-/**
- * Executes when a message is created in Discord
- * Processes messages that mention the bot or reply to the bot
- * 
- * @param {Message} message - The Discord message object
- */
 module.exports = {
   name: Events.MessageCreate,
+  /**
+   * Executes when a message is created in Discord
+   * Processes messages that mention the bot or reply to the bot
+   * 
+   * @param {Message} message - The Discord message object
+   */
   async execute(message) {
     // Ignore messages from bots to prevent loops
     if (message.author.bot) return;
