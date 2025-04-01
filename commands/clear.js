@@ -15,6 +15,7 @@ module.exports = {
    * @param {CommandInteraction} interaction - The Discord interaction object
    */
   async execute(interaction) {
+    await interaction.deferReply();
     const client = interaction.client;
     const channelId = interaction.channelId;
     const userId = interaction.user.id;
@@ -46,14 +47,14 @@ module.exports = {
           });
 
           // Inform the user that the clear was successful
-          await interaction.reply({ 
+          await interaction.editReply({ 
             content: '🗑️ Your conversation history has been cleared for this channel.', 
             ephemeral: true 
           });
         } else {
           // No conversation history found for the user
           logger.warn(`Clear command failed - no conversation history found for user ${userId} in channel ${channelId}.`);
-          await interaction.reply({ 
+          await interaction.editReply({ 
             content: '⚠️ No conversation history found for you in this channel.', 
             ephemeral: true 
           });
@@ -61,7 +62,7 @@ module.exports = {
       } else {
         // No conversation history for the channel
         logger.warn(`Clear command failed - no conversation history for channel ${channelId}.`);
-        await interaction.reply({ 
+        await interaction.editReply({ 
           content: '⚠️ No conversation history found for this channel.', 
           ephemeral: true 
         });
@@ -72,7 +73,7 @@ module.exports = {
         error: error.stack,
         userId: userId
       });
-      await interaction.reply({ 
+      await interaction.editReply({ 
         content: '⚠️ An error occurred while trying to clear your conversation history.', 
         ephemeral: true 
       });

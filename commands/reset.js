@@ -16,6 +16,7 @@ module.exports = {
    * @param {CommandInteraction} interaction - The Discord interaction object
    */
   async execute(interaction) {
+    await interaction.deferReply();
     const client = interaction.client;
     const channelId = interaction.channelId;
 
@@ -53,14 +54,14 @@ module.exports = {
         }
 
         // Inform the user that the reset was successful
-        await interaction.reply({ 
+        await interaction.editReply({ 
           content: '🗑️ Conversation history has been reset for this channel.', 
           ephemeral: true 
         });
       } else {
         // No conversation history found
         logger.warn(`Reset command failed - no conversation history found for channel ${channelId}.`);
-        await interaction.reply({ 
+        await interaction.editReply({ 
           content: '⚠️ No conversation history found for this channel.', 
           ephemeral: true 
         });
@@ -71,7 +72,7 @@ module.exports = {
         error: error.stack,
         userId: interaction.user.id
       });
-      await interaction.reply({ 
+      await interaction.editReply({ 
         content: '⚠️ An error occurred while trying to reset the conversation history.', 
         ephemeral: true 
       });
