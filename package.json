@@ -18,7 +18,7 @@
     "dependencies": {
         "@sentry/node": "^9.11.0",
         "discord.js": "^14.18.0",
-        "dotenv": "^16.4.7",
+        "dotenv": "^16.5.0",
         "node": "^23.11.0",
         "openai": "^4.92.0",
         "winston": "^3.17.0"
