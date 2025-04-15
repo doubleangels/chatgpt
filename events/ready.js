@@ -6,20 +6,20 @@ module.exports = {
   name: 'ready',
   once: true,
   /**
-   * Executes once when the bot comes online
-   * Sets up the bot's presence and initial state
+   * Executes once when the bot comes online.
+   * Sets up the bot's presence and initial state.
    * 
-   * @param {Client} client - The Discord client instance
+   * @param {Client} client - The Discord client instance.
    */
   async execute(client) {
-    logger.info("Bot is online! Initializing setup procedures...", {
+    logger.info("Bot is online! Initializing setup procedures.", {
       username: client.user.tag,
       userId: client.user.id,
       guilds: client.guilds.cache.size
     });
 
     try {
-      // Set the bot's presence with a custom activity
+      // Set the bot's presence with a custom activity.
       await client.user.setPresence({
         activities: [{
           name: "for pings! 📡",
@@ -28,35 +28,44 @@ module.exports = {
         status: "online"
       });
       
-      logger.debug("Bot presence and activity set successfully:", { 
+      logger.debug("Bot presence and activity set successfully.", { 
         activity: "Watching for pings!", 
         status: "online" 
       });
       
-      // Log information about connected guilds
+      // Log information about connected guilds.
       try {
+        const guildCount = client.guilds.cache.size;
+        logger.info(`Connected to ${guildCount} guild(s).`);
+        
         client.guilds.cache.forEach(guild => {
-          logger.info(`Connected to guild: ${guild.name}`, {
+          logger.info(`Connected to guild: ${guild.name}.`, {
             guildId: guild.id,
             memberCount: guild.memberCount,
             channelCount: guild.channels.cache.size
           });
         });
       } catch (guildError) {
-        logger.error("Failed to log connected guilds:", {
-          error: guildError.message,
-          stack: guildError.stack
+        logger.error("Failed to log connected guilds.", {
+          error: guildError.stack,
+          message: guildError.message
         });
       }
       
     } catch (error) {
-      logger.error("Failed to set bot presence:", { 
-        error: error.message,
-        stack: error.stack
+      logger.error("Failed to set bot presence.", { 
+        error: error.stack,
+        message: error.message
       });
     }
 
-    logger.info("Bot is ready and setup complete!", {
+    // Initialize conversation history Map if it doesn't exist.
+    if (!client.conversationHistory) {
+      client.conversationHistory = new Map();
+      logger.debug("Initialized conversation history storage.");
+    }
+
+    logger.info("Bot is ready and setup complete.", {
       readyTimestamp: new Date().toISOString()
     });
   }

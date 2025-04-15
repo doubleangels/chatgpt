@@ -23,7 +23,7 @@ const client = new Client({
 client.commands = new Collection();
 
 // Collection to store conversation history for chat.
-client.conversationHistory = new Collection();
+client.conversationHistory = new Map();
 
 // Load and register command files.
 const commandsPath = path.join(__dirname, 'commands');
@@ -33,7 +33,7 @@ for (const file of commandFiles) {
   try {
     const command = require(path.join(commandsPath, file));
     client.commands.set(command.data.name, command);
-    logger.info("Loaded command:", { command: command.data.name });
+    logger.info(`Loaded command: ${command.data.name}.`);
   } catch (error) {
     Sentry.captureException(error, {
       extra: {
@@ -41,7 +41,10 @@ for (const file of commandFiles) {
         commandFile: file
       }
     });
-    logger.error("Error loading command:", { file, error });
+    logger.error(`Error loading command file: ${file}.`, {
+      error: error.stack,
+      message: error.message
+    });
   }
 }
 
@@ -55,7 +58,7 @@ for (const file of eventFiles) {
     if (event.once) {
       client.once(event.name, (...args) => {
         try {
-          logger.debug("Executing once event:", { event: event.name });
+          logger.debug(`Executing once event: ${event.name}.`);
           event.execute(...args, client);
         } catch (error) {
           Sentry.captureException(error, {
@@ -64,13 +67,16 @@ for (const file of eventFiles) {
               eventName: event.name
             }
           });
-          logger.error("Error executing once event:", { event: event.name, error });
+          logger.error(`Error executing once event: ${event.name}.`, {
+            error: error.stack,
+            message: error.message
+          });
         }
       });
     } else {
       client.on(event.name, (...args) => {
         try {
-          logger.debug("Executing event:", { event: event.name });
+          logger.debug(`Executing event: ${event.name}.`);
           event.execute(...args, client);
         } catch (error) {
           Sentry.captureException(error, {
@@ -79,11 +85,14 @@ for (const file of eventFiles) {
               eventName: event.name
             }
           });
-          logger.error("Error executing event:", { event: event.name, error });
+          logger.error(`Error executing event: ${event.name}.`, {
+            error: error.stack,
+            message: error.message
+          });
         }
       });
     }
-    logger.info("Loaded event:", { event: event.name });
+    logger.info(`Loaded event: ${event.name}.`);
   } catch (error) {
     Sentry.captureException(error, {
       extra: {
@@ -91,13 +100,16 @@ for (const file of eventFiles) {
         eventFile: file
       }
     });
-    logger.error("Error loading event:", { file, error });
+    logger.error(`Error loading event file: ${file}.`, {
+      error: error.stack,
+      message: error.message
+    });
   }
 }
 
 // Event triggered when the bot is ready.
 client.once('ready', async () => {
-  logger.info("Bot is online:", { tag: client.user.tag });
+  logger.info(`Bot is online: ${client.user.tag}.`);
 });
 
 // Handle interaction events (slash commands).
@@ -108,10 +120,14 @@ client.on('interactionCreate', async interaction => {
   if (!command) return;
 
   try {
-    logger.debug("Executing command:", { command: interaction.commandName, user: interaction.user.tag });
+    logger.debug(`Executing command: ${interaction.commandName}.`, { 
+      user: interaction.user.tag,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
     await command.execute(interaction);
   } catch (error) {
-    // Add Sentry error tracking
+    // Add Sentry error tracking.
     Sentry.captureException(error, {
       extra: {
         commandName: interaction.commandName,
@@ -121,22 +137,31 @@ client.on('interactionCreate', async interaction => {
       }
     });
     
-    logger.error("Error executing command:", { command: interaction.commandName, error });
+    logger.error(`Error executing command: ${interaction.commandName}.`, {
+      error: error.stack,
+      message: error.message,
+      user: interaction.user.tag
+    });
     try {
+      const errorMessage = 'There was an error executing that command!';
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.followUp({ content: errorMessage, ephemeral: true });
       } else {
-        await interaction.reply({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.reply({ content: errorMessage, ephemeral: true });
       }
     } catch (replyError) {
-      // Track the follow-up error as well
+      // Track the follow-up error as well.
       Sentry.captureException(replyError, {
         extra: { 
           originalError: error.message,
           commandName: interaction.commandName
         }
       });
-      logger.error("Error sending error response:", { error: replyError });
+      logger.error("Error sending error response.", {
+        error: replyError.stack,
+        message: replyError.message,
+        originalError: error.message
+      });
     }
   }
 });
@@ -145,22 +170,23 @@ client.on('interactionCreate', async interaction => {
 client.on('interactionCreate', async interaction => {
   if (!interaction.isContextMenuCommand()) return;
 
-  logger.debug("Executing context menu command:", { 
-    command: interaction.commandName, 
-    user: interaction.user.tag 
-  });
-
   const command = client.commands.get(interaction.commandName);
   if (!command) {
-    logger.warn("Unknown context menu command:", { command: interaction.commandName });
+    logger.warn(`Unknown context menu command: ${interaction.commandName}.`);
     return;
   }
 
+  logger.debug(`Executing context menu command: ${interaction.commandName}.`, { 
+    user: interaction.user.tag,
+    userId: interaction.user.id,
+    guildId: interaction.guildId
+  });
+
   try {
     await command.execute(interaction);
-    logger.debug("Context menu command executed successfully:", { command: interaction.commandName });
+    logger.debug(`Context menu command executed successfully: ${interaction.commandName}.`);
   } catch (error) {
-    // Add Sentry error tracking
+    // Add Sentry error tracking.
     Sentry.captureException(error, {
       extra: {
         commandType: 'contextMenu',
@@ -171,18 +197,22 @@ client.on('interactionCreate', async interaction => {
       }
     });
     
-    logger.error("Error executing context menu command:", { 
-      command: interaction.commandName, 
-      error 
+    logger.error(`Error executing context menu command: ${interaction.commandName}.`, { 
+      error: error.stack,
+      message: error.message,
+      user: interaction.user.tag
     });
+
     try {
+      const errorMessage = 'There was an error executing that command!';
+      
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.followUp({ content: errorMessage, ephemeral: true });
       } else {
-        await interaction.reply({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.reply({ content: errorMessage, ephemeral: true });
       }
     } catch (replyError) {
-      // Track the follow-up error as well
+      // Track the follow-up error as well.
       Sentry.captureException(replyError, {
         extra: { 
           originalError: error.message,
@@ -190,26 +220,36 @@ client.on('interactionCreate', async interaction => {
           commandType: 'contextMenu'
         }
       });
-      logger.error("Error sending error response:", { error: replyError });
+      logger.error("Error sending error response.", {
+        error: replyError.stack,
+        message: replyError.message,
+        originalError: error.message
+      });
     }
   }
 });
 
 // Log the bot in using the token from the config file.
-client.login(config.token).catch(err => {
-  Sentry.captureException(err, {
+client.login(config.token).catch(error => {
+  Sentry.captureException(error, {
     extra: { context: 'bot_login_failure' }
   });
-  logger.error("Error logging in:", { err });
+  logger.error("Error logging in.", {
+    error: error.stack,
+    message: error.message
+  });
 });
 
-// Add global unhandled error handlers
+// Add global unhandled error handlers.
 process.on('uncaughtException', (error) => {
   Sentry.captureException(error, {
     extra: { context: 'uncaughtException' }
   });
-  logger.error('Uncaught Exception:', { error });
-  // Don't exit immediately to allow Sentry to send the error
+  logger.error('Uncaught Exception.', {
+    error: error.stack,
+    message: error.message
+  });
+  // Don't exit immediately to allow Sentry to send the error.
   setTimeout(() => process.exit(1), 1000);
 });
 
@@ -217,13 +257,15 @@ process.on('unhandledRejection', (reason, promise) => {
   Sentry.captureException(reason, {
     extra: { context: 'unhandledRejection' }
   });
-  logger.error('Unhandled Promise Rejection:', { reason });
+  logger.error('Unhandled Promise Rejection.', {
+    error: reason?.stack,
+    message: reason?.message || String(reason)
+  });
 });
-
 // Gracefully handle termination signals (for clean bot shutdown).
 process.on('SIGINT', () => {
   logger.info("Shutdown signal (SIGINT) received. Exiting...");
-  // Flush Sentry events before exiting
+  // Flush Sentry events before exiting.
   Sentry.close(2000).then(() => {
     process.exit(0);
   });
@@ -231,7 +273,7 @@ process.on('SIGINT', () => {
 
 process.on('SIGTERM', () => {
   logger.info("Shutdown signal (SIGTERM) received. Exiting...");
-  // Flush Sentry events before exiting
+  // Flush Sentry events before exiting.
   Sentry.close(2000).then(() => {
     process.exit(0);
   });
