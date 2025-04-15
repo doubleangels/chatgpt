@@ -1,6 +1,7 @@
 const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
+const Sentry = require('../sentry');
 
 module.exports = {
   name: 'ready',
@@ -46,13 +47,27 @@ module.exports = {
           });
         });
       } catch (guildError) {
+        Sentry.captureException(guildError, {
+          extra: {
+            context: 'logging_connected_guilds',
+            botId: client.user.id
+          }
+        });
+      
         logger.error("Failed to log connected guilds.", {
           error: guildError.stack,
           message: guildError.message
         });
       }
-      
+
     } catch (error) {
+      Sentry.captureException(error, {
+        extra: {
+          context: 'setting_bot_presence',
+          botId: client.user.id
+        }
+      });
+      
       logger.error("Failed to set bot presence.", { 
         error: error.stack,
         message: error.message
