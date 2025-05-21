@@ -5,7 +5,7 @@ const logger = require('./logger')(path.basename(__filename));
 const config = require('./config');
 
 /**
- * Deploys all slash commands to Discord API.
+ * We deploy all slash commands to Discord API.
  * 
  * We collect all command modules from the commands directory,
  * convert them to the format required by Discord, and register them globally

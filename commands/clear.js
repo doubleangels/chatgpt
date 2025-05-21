@@ -65,7 +65,7 @@ module.exports = {
       // Inform the user that the clear was successful.
       await interaction.editReply({ 
         content: '🗑️ Your conversation history has been cleared for this channel.', 
-        ephemeral: false  // Making success messages public as requested
+        ephemeral: false
       });
     } catch (error) {
       // Log and inform the user of any errors that occur during execution.
@@ -76,7 +76,7 @@ module.exports = {
       });
       await interaction.editReply({ 
         content: '⚠️ An error occurred while trying to clear your conversation history.', 
-        ephemeral: true  // Keeping errors ephemeral as requested
+        ephemeral: true
       });
     }
   },

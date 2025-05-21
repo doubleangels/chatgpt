@@ -67,7 +67,7 @@ module.exports = {
       // Inform the user that the reset was successful.
       await interaction.editReply({ 
         content: '🗑️ Conversation history has been reset for this channel.', 
-        ephemeral: false  // Making success messages public as requested
+        ephemeral: false
       });
     } catch (error) {
       // Log and inform the user of any errors that occur during execution.
@@ -79,7 +79,7 @@ module.exports = {
       
       await interaction.editReply({ 
         content: '⚠️ An error occurred while trying to reset the conversation history.', 
-        ephemeral: true  // Keeping errors ephemeral as requested
+        ephemeral: true
       });
     }
   },
