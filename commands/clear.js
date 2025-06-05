@@ -1,18 +1,20 @@
+/**
+ * @fileoverview Command to clear a user's conversation history in a specific channel
+ */
+
 const { SlashCommandBuilder } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
 module.exports = {
-  // Define the command as a slash command with no special permissions.
   data: new SlashCommandBuilder()
     .setName('clear')
     .setDescription('Clear your conversation history for this channel.'),
 
   /**
-   * Executes the clear command.
-   * Clears the conversation history for the user in the current channel.
-   * 
-   * @param {CommandInteraction} interaction - The Discord interaction object.
+   * Executes the clear command to remove a user's conversation history from a channel
+   * @param {import('discord.js').CommandInteraction} interaction - The interaction object representing the command
+   * @returns {Promise<void>}
    */
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
@@ -28,7 +30,7 @@ module.exports = {
     });
 
     try {
-      // Check if there's conversation history for this channel.
+      // Check if channel has any conversation history
       if (!client.conversationHistory.has(channelId)) {
         logger.debug(`No conversation history found for channel ${channelId}.`);
         await interaction.editReply({ 
@@ -40,7 +42,7 @@ module.exports = {
 
       const userHistoryMap = client.conversationHistory.get(channelId);
 
-      // Check if there's history for the specific user.
+      // Check if user has any conversation history in this channel
       if (!userHistoryMap.has(userId)) {
         logger.debug(`No conversation history found for user ${userId} in channel ${channelId}.`);
         await interaction.editReply({ 
@@ -50,11 +52,10 @@ module.exports = {
         return;
       }
 
-      // Get the current history length for logging.
       const userHistory = userHistoryMap.get(userId);
       const currentLength = userHistory?.length || 0;
 
-      // Clear the user's conversation history.
+      // Remove user's conversation history
       userHistoryMap.delete(userId);
 
       logger.info(`User conversation history cleared in channel ${channelId}.`, {
@@ -62,13 +63,11 @@ module.exports = {
         previousLength: currentLength
       });
 
-      // Inform the user that the clear was successful.
       await interaction.editReply({ 
         content: '🗑️ Your conversation history has been cleared for this channel.', 
         ephemeral: false
       });
     } catch (error) {
-      // Log and inform the user of any errors that occur during execution.
       logger.error(`Error executing clear command in channel ${channelId}.`, {
         error: error.stack,
         userId,

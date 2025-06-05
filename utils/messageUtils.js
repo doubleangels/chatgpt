@@ -1,23 +1,24 @@
+/**
+ * @fileoverview Utility functions for handling Discord message formatting and splitting
+ */
+
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
 /**
- * Splits a message into chunks that fit within Discord's character limit.
- * Discord has a 2000 character limit per message, so longer messages need to be split.
- * 
- * @param {string} text - The message text to split.
- * @param {number} limit - Maximum characters per chunk (default: 2000).
- * @returns {Array<string>} - Array of message chunks.
+ * Splits a message into chunks that fit within Discord's message length limit
+ * Preserves line breaks and tries to split at natural boundaries
+ * @param {string} text - The text to split into chunks
+ * @param {number} [limit=2000] - Maximum length of each chunk (Discord's limit is 2000)
+ * @returns {string[]} Array of message chunks
  */
 function splitMessage(text, limit = 2000) {
   try {
-    // Return as-is if text is empty or undefined.
     if (!text) {
       logger.debug('Empty text provided to splitMessage, returning empty array.');
       return [''];
     }
     
-    // Return as-is if text is within the limit.
     if (text.length <= limit) {
       logger.debug(`Text length (${text.length}) is within limit (${limit}), no splitting needed.`);
       return [text];
@@ -30,19 +31,19 @@ function splitMessage(text, limit = 2000) {
     let currentChunk = '';
     let lineCount = 0;
     
-    // Process each line and add to chunks as needed.
+    // Process each line of the message
     for (const line of lines) {
       lineCount++;
       
-      // Check if adding this line would exceed the limit.
+      // Check if adding this line would exceed the limit
       if (currentChunk.length + line.length + 1 > limit) {
         if (currentChunk) {
-          // Current chunk is full, push it and start a new one.
+          // Save current chunk and start a new one
           chunks.push(currentChunk);
           logger.debug(`Chunk ${chunks.length} created with ${currentChunk.length} characters.`);
           currentChunk = line;
         } else {
-          // Line itself is longer than the limit, split it.
+          // If a single line is too long, split it
           logger.debug(`Line ${lineCount} exceeds limit (${line.length} chars), splitting line itself.`);
           let remainingLine = line;
           while (remainingLine.length > limit) {
@@ -54,12 +55,12 @@ function splitMessage(text, limit = 2000) {
           currentChunk = remainingLine.length > 0 ? remainingLine : '';
         }
       } else {
-        // Add line to current chunk.
+        // Add line to current chunk
         currentChunk = currentChunk ? `${currentChunk}\n${line}` : line;
       }
     }
     
-    // Add the last chunk if it's not empty.
+    // Add any remaining text as the final chunk
     if (currentChunk) {
       chunks.push(currentChunk);
       logger.debug(`Final chunk ${chunks.length} created with ${currentChunk.length} characters.`);
@@ -79,7 +80,6 @@ function splitMessage(text, limit = 2000) {
       message: error.message,
       textLength: text?.length
     });
-    // Return an empty array on error.
     return ['Error splitting message'];
   }
 }

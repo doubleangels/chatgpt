@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Handles bot initialization and setup when it comes online
+ */
+
 const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
@@ -7,10 +11,9 @@ module.exports = {
   name: 'ready',
   once: true,
   /**
-   * Executes once when the bot comes online.
-   * Sets up the bot's presence and initial state.
-   * 
-   * @param {Client} client - The Discord client instance.
+   * Executes when the bot comes online, setting up presence and initializing conversation history
+   * @param {import('discord.js').Client} client - The Discord client instance
+   * @returns {Promise<void>}
    */
   async execute(client) {
     logger.info("Bot is online! Initializing setup procedures.", {
@@ -20,7 +23,7 @@ module.exports = {
     });
 
     try {
-      // Set the bot's presence with a custom activity.
+      // Set bot's presence and activity status
       await client.user.setPresence({
         activities: [{
           name: "for pings! 📡",
@@ -34,8 +37,8 @@ module.exports = {
         status: "online" 
       });
       
-      // Log information about connected guilds.
       try {
+        // Log information about connected guilds
         const guildCount = client.guilds.cache.size;
         logger.info(`Connected to ${guildCount} guild(s).`);
         
@@ -74,7 +77,7 @@ module.exports = {
       });
     }
 
-    // Initialize conversation history Map if it doesn't exist.
+    // Initialize conversation history storage if it doesn't exist
     if (!client.conversationHistory) {
       client.conversationHistory = new Map();
       logger.debug("Initialized conversation history storage.");

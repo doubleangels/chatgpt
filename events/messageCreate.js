@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Handles incoming messages and manages conversation history
+ */
+
 const { Events } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage } = require('../utils/messageUtils');
@@ -9,13 +13,11 @@ const Sentry = require('../sentry');
 module.exports = {
   name: Events.MessageCreate,
   /**
-   * Executes when a message is created in Discord.
-   * Processes messages that mention the bot or reply to the bot.
-   * 
-   * @param {Message} message - The Discord message object.
+   * Handles incoming messages, processes bot mentions and replies, and manages conversation history
+   * @param {import('discord.js').Message} message - The message object that triggered the event
+   * @returns {Promise<void>}
    */
   async execute(message) {
-    // Ignore messages from bots to prevent loops.
     if (message.author.bot) return;
 
     const client = message.client;
@@ -24,14 +26,12 @@ module.exports = {
     const userId = message.author.id;
     const channelName = message.channel?.name || 'unknown';
 
-    // Check if this is a reply to the bot.
     let isReplyToBot = false;
     let referencedMessage = null;
 
-    // Process message reference (if it's a reply).
+    // Check if message is a reply to the bot
     if (message.reference && message.reference.messageId) {
       try {
-        // Fetch the message being replied to.
         referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
         isReplyToBot = referencedMessage.author.id === client.user.id;
 
@@ -56,15 +56,13 @@ module.exports = {
       }
     }
 
-    // Check if the bot should process this message - only respond to mentions or replies.
     const hasBotMention = message.content.includes(botMention);
 
-    // Process only if the bot is mentioned or is a reply to the bot.
+    // Only process messages that mention the bot or reply to it
     if (!hasBotMention && !isReplyToBot) {
       return;
     }
 
-    // Start typing indicator to show the bot is processing.
     try {
       await message.channel.sendTyping();
     } catch (err) {
@@ -83,17 +81,17 @@ module.exports = {
       isReply: isReplyToBot
     });
 
-    // Process user message - replace bot mention with a generic name.
+    // Clean up user's message by replacing bot mention with @ChatGPT
     const userText = message.content.replace(botMention, '@ChatGPT').trim();
 
-    // Initialize conversation history for this channel if it doesn't exist.
+    // Initialize conversation history for new channels
     if (!client.conversationHistory.has(channelId)) {
       logger.info(`Initializing new conversation history for channel #${channelName} (${channelId}).`);
       client.conversationHistory.set(channelId, new Map());
     }
 
     const channelHistory = client.conversationHistory.get(channelId);
-    // Initialize user history if it doesn't exist.
+    // Initialize user's conversation history with system message if it doesn't exist
     if (!channelHistory.has(userId)) {
       channelHistory.set(userId, [
         {
@@ -107,9 +105,8 @@ module.exports = {
       ]);
     }
 
-    // Get conversation history for the user.
     const userHistory = channelHistory.get(userId);
-    // Add referenced message to history if replying to bot.
+    // Add bot's previous response to history if this is a reply
     if (isReplyToBot && referencedMessage) {
       logger.debug(`Adding bot's previous response to conversation history for user ${userId} in channel ${channelId}.`);
       userHistory.push({
@@ -118,20 +115,19 @@ module.exports = {
       });
     }
 
-    // Add user message to history.
+    // Add user's message to history
     logger.debug(`Adding user message (${message.id}) to conversation history for user ${userId}.`);
     userHistory.push({
       role: 'user',
       content: userText
     });
 
-    // Ensure history doesn't exceed maximum length.
-    if (userHistory.length > maxHistoryLength + 1) { // +1 for system message
+    // Trim history if it exceeds maximum length while preserving system message
+    if (userHistory.length > maxHistoryLength + 1) {
       logger.debug(`Trimming conversation history for user ${userId} in channel ${channelId} (current: ${userHistory.length}, max: ${maxHistoryLength + 1}).`);
 
       while (userHistory.length > maxHistoryLength + 1) {
         if (userHistory[0].role === 'system') {
-          // Skip the system message.
           if (userHistory.length > 1) {
             userHistory.splice(1, 1);
           }
@@ -142,7 +138,7 @@ module.exports = {
     }
 
     try {
-      // Generate AI response.
+      // Generate and send AI response
       logger.info(`Generating AI response for message ${message.id} from ${message.author.tag}.`);
       const reply = await generateAIResponse(userHistory);
 
@@ -155,20 +151,18 @@ module.exports = {
         return;
       }
 
-      // Split response if needed and send.
+      // Split and send response in chunks if needed
       const chunks = splitMessage(reply);
       logger.info(`Sending AI response in ${chunks.length} chunks for message ${message.id} in channel ${channelId}.`);
 
       for (let i = 0; i < chunks.length; i++) {
         try {
           if (i === 0) {
-            // First chunk is sent as a reply to maintain context.
             await message.reply({
               content: chunks[i],
               ephemeral: false
             });
           } else {
-            // Additional chunks are sent as follow-up messages.
             await message.channel.send({
               content: chunks[i],
               ephemeral: false
@@ -195,7 +189,7 @@ module.exports = {
         }
       }
 
-      // Add AI response to history.
+      // Add AI response to conversation history
       logger.debug(`Adding AI response to conversation history for user ${userId} in channel ${channelId}.`);
       userHistory.push({
         role: 'assistant',
@@ -203,7 +197,6 @@ module.exports = {
       });
 
     } catch (error) {
-      // Log, track errors with Sentry, and inform the user.
       Sentry.captureException(error, {
         extra: {
           context: 'processing_message',
@@ -221,7 +214,6 @@ module.exports = {
         errorMessage: error.message
       });
       
-      // Send error message to user.
       await message.reply({
         content: "⚠️ An error occurred while processing your request.",
         ephemeral: true

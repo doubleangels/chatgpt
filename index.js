@@ -5,12 +5,6 @@ const logger = require('./logger')(path.basename(__filename));
 const config = require('./config');
 const Sentry = require('./sentry');
 
-/**
- * This script initializes and configures a Discord bot using discord.js.
- * It loads commands and event handlers and handles bot interactions, 
- * including slash commands and context menu commands.
- */
-// Create a new Discord client instance with necessary gateway intents.
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,           // Allows bot to access basic guild (server) data.
@@ -19,13 +13,10 @@ const client = new Client({
   ]
 });
 
-// Collection to store bot commands.
 client.commands = new Collection();
 
-// Collection to store conversation history for chat.
 client.conversationHistory = new Map();
 
-// Load and register command files.
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -48,7 +39,6 @@ for (const file of commandFiles) {
   }
 }
 
-// Load and register event files.
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -107,12 +97,10 @@ for (const file of eventFiles) {
   }
 }
 
-// Event triggered when the bot is ready.
 client.once('ready', async () => {
   logger.info(`Bot is online: ${client.user.tag}.`);
 });
 
-// Handle interaction events (slash commands).
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -127,7 +115,6 @@ client.on('interactionCreate', async interaction => {
     });
     await command.execute(interaction);
   } catch (error) {
-    // Add Sentry error tracking.
     Sentry.captureException(error, {
       extra: {
         commandName: interaction.commandName,
@@ -150,7 +137,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: errorMessage, ephemeral: true });
       }
     } catch (replyError) {
-      // Track the follow-up error as well.
       Sentry.captureException(replyError, {
         extra: { 
           originalError: error.message,
@@ -166,7 +152,6 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// Handle context menu command interactions.
 client.on('interactionCreate', async interaction => {
   if (!interaction.isContextMenuCommand()) return;
 
@@ -186,7 +171,6 @@ client.on('interactionCreate', async interaction => {
     await command.execute(interaction);
     logger.debug(`Context menu command executed successfully: ${interaction.commandName}.`);
   } catch (error) {
-    // Add Sentry error tracking.
     Sentry.captureException(error, {
       extra: {
         commandType: 'contextMenu',
@@ -212,7 +196,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: errorMessage, ephemeral: true });
       }
     } catch (replyError) {
-      // Track the follow-up error as well.
       Sentry.captureException(replyError, {
         extra: { 
           originalError: error.message,
@@ -229,7 +212,6 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// Log the bot in using the token from the config file.
 client.login(config.token).catch(error => {
   Sentry.captureException(error, {
     extra: { context: 'bot_login_failure' }
@@ -240,7 +222,6 @@ client.login(config.token).catch(error => {
   });
 });
 
-// Add global unhandled error handlers.
 process.on('uncaughtException', (error) => {
   Sentry.captureException(error, {
     extra: { context: 'uncaughtException' }
@@ -249,7 +230,6 @@ process.on('uncaughtException', (error) => {
     error: error.stack,
     message: error.message
   });
-  // Don't exit immediately to allow Sentry to send the error.
   setTimeout(() => process.exit(1), 1000);
 });
 
@@ -262,10 +242,8 @@ process.on('unhandledRejection', (reason, promise) => {
     message: reason?.message || String(reason)
   });
 });
-// Gracefully handle termination signals (for clean bot shutdown).
 process.on('SIGINT', () => {
   logger.info("Shutdown signal (SIGINT) received. Exiting...");
-  // Flush Sentry events before exiting.
   Sentry.close(2000).then(() => {
     process.exit(0);
   });
@@ -273,7 +251,6 @@ process.on('SIGINT', () => {
 
 process.on('SIGTERM', () => {
   logger.info("Shutdown signal (SIGTERM) received. Exiting...");
-  // Flush Sentry events before exiting.
   Sentry.close(2000).then(() => {
     process.exit(0);
   });
