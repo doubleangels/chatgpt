@@ -8,15 +8,6 @@ const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
-// Log message constants for bot status and activity
-const LOG_BOT_ONLINE = 'Bot is online: %s';
-const LOG_BOT_ACTIVITY = 'Bot activity set to: %s';
-const LOG_GUILD_COUNT = 'Bot is in %d guilds';
-const LOG_GUILD_INFO = 'Guild: %s (ID: %s)';
-const LOG_ERROR_GETTING_GUILDS = 'Error getting guilds:';
-const LOG_INIT_HISTORY = "Initialized conversation history storage.";
-const LOG_SETUP_COMPLETE = "Bot is ready and setup complete.";
-
 /**
  * Bot's activity configuration for Discord presence
  * @type {Object}
@@ -45,18 +36,11 @@ module.exports = {
       logger.info(`Bot activity set to: ${BOT_ACTIVITY.name}`);
 
       const guilds = client.guilds.cache;
-      logger.info(`Bot is in ${guilds.size} guilds`);
+      const guildList = Array.from(guilds.values())
+        .map(guild => `${guild.name} (ID: ${guild.id})`)
+        .join(', ');
+      logger.info(`Bot is in ${guilds.size} guilds: ${guildList}`);
 
-      guilds.forEach(guild => {
-        try {
-          logger.info(`Guild: ${guild.name} (ID: ${guild.id})`);
-        } catch (error) {
-          logger.error(`Error getting guild info for ${guild.name}:`, {
-            error: error.stack,
-            message: error.message
-          });
-        }
-      });
     } catch (error) {
       logger.error('Error getting guilds:', {
         error: error.stack,
@@ -66,10 +50,10 @@ module.exports = {
 
     if (!client.conversationHistory) {
       client.conversationHistory = new Map();
-      logger.debug(LOG_INIT_HISTORY);
+      logger.debug('Initialized conversation history storage.');
     }
 
-    logger.info(LOG_SETUP_COMPLETE, {
+    logger.info('Bot is ready and setup complete.', {
       readyTimestamp: new Date().toISOString()
     });
   }

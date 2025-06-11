@@ -25,19 +25,6 @@ const BOT_INTENTS = [
 const ERROR_MESSAGE_COMMAND = 'There was an error executing that command!';
 const ERROR_MESSAGE_CONTEXT_MENU = 'There was an error executing that command!';
 
-// Log message constants
-const LOG_BOT_ONLINE = 'Bot is online: %s';
-const LOG_EXECUTING_COMMAND = 'Executing command: %s';
-const LOG_EXECUTING_CONTEXT_MENU = 'Executing context menu command: %s';
-const LOG_CONTEXT_MENU_SUCCESS = 'Context menu command executed successfully: %s';
-const LOG_UNKNOWN_CONTEXT_MENU = 'Unknown context menu command: %s';
-const LOG_ERROR_SENDING_RESPONSE = 'Error sending error response.';
-const LOG_BOT_LOGIN_ERROR = 'Error logging in.';
-const LOG_UNCAUGHT_EXCEPTION = 'Uncaught Exception.';
-const LOG_UNHANDLED_REJECTION = 'Unhandled Promise Rejection.';
-const LOG_SHUTDOWN_SIGINT = 'Shutdown signal (SIGINT) received. Exiting...';
-const LOG_SHUTDOWN_SIGTERM = 'Shutdown signal (SIGTERM) received. Exiting...';
-
 /** Delay in milliseconds before forced process exit */
 const PROCESS_EXIT_DELAY = 1000;
 
@@ -141,7 +128,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: ERROR_MESSAGE_COMMAND, ephemeral: true });
       }
     } catch (replyError) {
-      logger.error(LOG_ERROR_SENDING_RESPONSE, {
+      logger.error('Error sending error response.', {
         error: replyError.stack,
         message: replyError.message,
         originalError: error.message
@@ -182,7 +169,7 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: ERROR_MESSAGE_CONTEXT_MENU, ephemeral: true });
       }
     } catch (replyError) {
-      logger.error(LOG_ERROR_SENDING_RESPONSE, {
+      logger.error('Error sending error response.', {
         error: replyError.stack,
         message: replyError.message,
         originalError: error.message
@@ -192,14 +179,14 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(config.token).catch(error => {
-  logger.error(LOG_BOT_LOGIN_ERROR, {
+  logger.error('Error logging in.', {
     error: error.stack,
     message: error.message
   });
 });
 
 process.on('uncaughtException', (error) => {
-  logger.error(LOG_UNCAUGHT_EXCEPTION, {
+  logger.error('Uncaught Exception.', {
     error: error.stack,
     message: error.message
   });
@@ -207,18 +194,18 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error(LOG_UNHANDLED_REJECTION, {
+  logger.error('Unhandled Promise Rejection.', {
     error: reason?.stack,
     message: reason?.message || String(reason)
   });
 });
 
 process.on('SIGINT', () => {
-  logger.info(LOG_SHUTDOWN_SIGINT);
+  logger.info('Shutdown signal (SIGINT) received. Exiting...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  logger.info(LOG_SHUTDOWN_SIGTERM);
+  logger.info('Shutdown signal (SIGTERM) received. Exiting...');
   process.exit(0);
 });

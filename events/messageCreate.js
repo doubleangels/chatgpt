@@ -15,19 +15,6 @@ const MESSAGE_TYPES = {
   REPLY: MessageType.Reply
 };
 
-// Log message constants
-const LOG_MESSAGE_RECEIVED = 'Message received from %s in %s: %s';
-const LOG_PROCESSING_MESSAGE = 'Processing message from %s in %s';
-const LOG_MESSAGE_IGNORED = 'Ignoring message from %s (bot)';
-const LOG_MESSAGE_TYPE_IGNORED = 'Ignoring message of type: %s';
-const LOG_NO_HISTORY = 'No conversation history found for channel %s';
-const LOG_HISTORY_CREATED = 'Created new conversation history for channel %s';
-const LOG_HISTORY_UPDATED = 'Updated conversation history for channel %s';
-const LOG_SENDING_REPLY = 'Sending reply to %s in %s';
-const LOG_REPLY_SENT = 'Reply sent successfully to %s in %s';
-const LOG_ERROR_PROCESSING = 'Error processing message:';
-const LOG_ERROR_SENDING = 'Error sending reply:';
-
 /**
  * Configuration for conversation history and system message
  * @type {Object}
@@ -56,12 +43,12 @@ module.exports = {
    */
   async execute(message) {
     if (message.author.bot) {
-      logger.debug(LOG_MESSAGE_IGNORED, message.author.tag);
+      logger.debug(`Ignoring message from ${message.author.tag} (bot)`);
       return;
     }
 
     if (message.type !== MESSAGE_TYPES.DEFAULT) {
-      logger.debug(LOG_MESSAGE_TYPE_IGNORED, message.type);
+      logger.debug(`Ignoring message of type: ${message.type}`);
       return;
     }
 
@@ -106,15 +93,15 @@ module.exports = {
       });
     }
 
-    logger.info(LOG_MESSAGE_RECEIVED, message.author.tag, channelName, message.content);
-    logger.debug(LOG_PROCESSING_MESSAGE, message.author.tag, channelName);
+    logger.info(`Message received from ${message.author.tag} in ${channelName}: ${message.content}`);
+    logger.debug(`Processing message from ${message.author.tag} in ${channelName}`);
 
     const userText = message.content.replace(botMention, '@ChatGPT').trim();
 
     if (!client.conversationHistory.has(channelId)) {
-      logger.debug(LOG_NO_HISTORY, channelId);
+      logger.debug(`No conversation history found for channel ${channelId}`);
       client.conversationHistory.set(channelId, new Map());
-      logger.info(LOG_HISTORY_CREATED, channelId);
+      logger.info(`Created new conversation history for channel ${channelId}`);
     }
 
     const channelHistory = client.conversationHistory.get(channelId);
@@ -142,7 +129,7 @@ module.exports = {
       userHistory.splice(1, userHistory.length - MESSAGE_CONFIG.maxHistoryLength);
     }
 
-    logger.debug(LOG_HISTORY_UPDATED, channelId);
+    logger.debug(`Updated conversation history for channel ${channelId}`);
 
     try {
       logger.info(`Generating AI response for message ${message.id} from ${message.author.tag}.`);
@@ -160,7 +147,7 @@ module.exports = {
       const replyChunks = splitMessage(reply);
       logger.info(`Sending AI response in ${replyChunks.length} chunks for message ${message.id} in channel ${channelId}.`);
 
-      logger.info(LOG_SENDING_REPLY, message.author.tag, channelName);
+      logger.info(`Sending reply to ${message.author.tag} in ${channelName}`);
 
       for (let i = 0; i < replyChunks.length; i++) {
         try {
@@ -191,9 +178,9 @@ module.exports = {
         content: reply
       });
 
-      logger.info(LOG_REPLY_SENT, message.author.tag, channelName);
+      logger.info(`Reply sent successfully to ${message.author.tag} in ${channelName}`);
     } catch (error) {
-      logger.error(LOG_ERROR_PROCESSING, {
+      logger.error('Error processing message:', {
         error: error.stack,
         message: error.message,
         userId,

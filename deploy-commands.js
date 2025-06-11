@@ -11,14 +11,6 @@ const COMMAND_FILE_EXTENSION = '.js';
 /** Discord API version to use */
 const DISCORD_API_VERSION = '10';
 
-// Log message constants
-const LOG_LOADED_COMMAND = 'Loaded command: %s';
-const LOG_DEPLOYING_COMMANDS = 'Deploying commands for application ID: %s';
-const LOG_DEPLOY_SUCCESS = 'Successfully registered %d application (/) commands.';
-const LOG_DEPLOY_ERROR = 'Failed to deploy commands:';
-const LOG_DEPLOY_COMPLETE = 'Command deployment completed successfully.';
-const LOG_DEPLOY_FAILED = 'Failed to deploy commands:';
-
 /**
  * Deploys slash commands to Discord.
  * Loads all command files from the commands directory and registers them with Discord.
@@ -36,13 +28,13 @@ async function deployCommands() {
   for (const file of commandFiles) {
     const command = require(`./commands/${file}`);
     commands.push(command.data.toJSON());
-    logger.debug(LOG_LOADED_COMMAND, file);
+    logger.debug(`Loaded command: ${file}`);
   }
   
   const rest = new REST({ version: DISCORD_API_VERSION }).setToken(config.token);
   
   const clientId = process.env.DISCORD_CLIENT_ID || config.clientId;
-  logger.info(LOG_DEPLOYING_COMMANDS, clientId);
+  logger.info(`Deploying commands for application ID: ${clientId}`);
   
   try {    
     await rest.put(
@@ -50,9 +42,9 @@ async function deployCommands() {
       { body: commands }
     );
     
-    logger.info(LOG_DEPLOY_SUCCESS, commands.length);
+    logger.info(`Successfully registered ${commands.length} application (/) commands.`);
   } catch (error) {
-    logger.error(LOG_DEPLOY_ERROR, { error });
+    logger.error('Failed to deploy commands:', { error });
     throw error;
   }
 }
@@ -62,9 +54,9 @@ module.exports = deployCommands;
 // Execute if this file is run directly
 if (require.main === module) {
   deployCommands()
-    .then(() => logger.info(LOG_DEPLOY_COMPLETE))
+    .then(() => logger.info('Command deployment completed successfully.'))
     .catch(err => {
-      logger.error(LOG_DEPLOY_FAILED, err);
+      logger.error('Failed to deploy commands:', err);
       process.exit(1);
     });
 }
