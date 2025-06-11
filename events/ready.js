@@ -1,7 +1,3 @@
-/**
- * @fileoverview Handles bot initialization and setup when it comes online
- */
-
 const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));

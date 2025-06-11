@@ -1,7 +1,3 @@
-/**
- * @fileoverview Utility functions for handling Discord message formatting and splitting
- */
-
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 

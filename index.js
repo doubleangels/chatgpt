@@ -38,7 +38,7 @@ const LOG_UNHANDLED_REJECTION = 'Unhandled Promise Rejection.';
 const LOG_SHUTDOWN_SIGINT = 'Shutdown signal (SIGINT) received. Exiting...';
 const LOG_SHUTDOWN_SIGTERM = 'Shutdown signal (SIGTERM) received. Exiting...';
 
-/** Delay in milliseconds before process exit after uncaught exception */
+/** Delay in milliseconds before forced process exit */
 const PROCESS_EXIT_DELAY = 1000;
 
 /**

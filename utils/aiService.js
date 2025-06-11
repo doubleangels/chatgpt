@@ -1,7 +1,3 @@
-/**
- * @fileoverview Service for interacting with OpenAI's API to generate AI responses
- */
-
 const { OpenAI } = require('openai');
 const { openaiApiKey, modelName } = require('../config');
 const path = require('path');
