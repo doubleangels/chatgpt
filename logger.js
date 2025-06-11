@@ -40,11 +40,15 @@ function getLogger(label) {
           delete meta[0];
         }
 
-        return LOG_FORMAT_TEMPLATE.replace('%s', timestamp)
+        // Format the final message
+        const finalMessage = LOG_FORMAT_TEMPLATE
+          .replace('%s', timestamp)
           .replace('%s', label)
           .replace('%s', level.toUpperCase())
           .replace('%s', formattedMessage)
           .replace('%s', Object.keys(meta).length ? JSON.stringify(meta) : '');
+
+        return finalMessage;
       })
     ),
     transports: [new transports.Console()]
