@@ -1,22 +1,41 @@
-/**
- * @fileoverview Command to reset all conversation history in a channel (admin only)
- */
-
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js'); 
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
+// Embed color constants
+const EMBED_COLOR_SUCCESS = 0x00FF00; // Green
+const EMBED_COLOR_ERROR = 0xFF0000;   // Red
+
+// Embed title constants
+const EMBED_TITLE_NO_HISTORY = '⚠️ No History Found';
+const EMBED_TITLE_RESET = '🗑️ History Reset';
+const EMBED_TITLE_ERROR = '⚠️ Error';
+
+// Embed description constants
+const EMBED_DESC_NO_HISTORY = 'No conversation history found for this channel.';
+const EMBED_DESC_RESET = 'Conversation history has been reset for this channel.';
+const EMBED_DESC_ERROR = 'An error occurred while trying to reset the conversation history.';
+
+/**
+ * Reset command module that allows administrators to reset all conversation history in a specific channel.
+ * @module commands/reset
+ */
 module.exports = {
+  /**
+   * Command data for the reset command.
+   * Requires administrator permissions to use.
+   * @type {SlashCommandBuilder}
+   */
   data: new SlashCommandBuilder()
     .setName('reset')
     .setDescription('Reset ALL conversation history for this channel.')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
     
-
   /**
-   * Executes the reset command to clear all conversation history in a channel
-   * Preserves system message if it exists, otherwise deletes all history
-   * @param {import('discord.js').CommandInteraction} interaction - The interaction object representing the command
+   * Executes the reset command.
+   * Resets all conversation history in the current channel while preserving the system message if it exists.
+   * 
+   * @param {import('discord.js').CommandInteraction} interaction - The interaction object
    * @returns {Promise<void>}
    */
   async execute(interaction) {
@@ -35,10 +54,11 @@ module.exports = {
     try {
       if (!client.conversationHistory.has(channelId)) {
         logger.debug(`Reset command failed - no conversation history found for channel ${channelId}.`);
-        await interaction.editReply({ 
-          content: '⚠️ No conversation history found for this channel.', 
-          ephemeral: true 
-        });
+        const embed = new EmbedBuilder()
+          .setColor(EMBED_COLOR_ERROR)
+          .setTitle(EMBED_TITLE_NO_HISTORY)
+          .setDescription(EMBED_DESC_NO_HISTORY);
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
@@ -63,10 +83,11 @@ module.exports = {
         });
       }
 
-      await interaction.editReply({ 
-        content: '🗑️ Conversation history has been reset for this channel.', 
-        ephemeral: false
-      });
+      const embed = new EmbedBuilder()
+        .setColor(EMBED_COLOR_SUCCESS)
+        .setTitle(EMBED_TITLE_RESET)
+        .setDescription(EMBED_DESC_RESET);
+      await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error(`Error executing reset command in channel ${channelId}.`, {
         error: error.stack,
@@ -74,10 +95,11 @@ module.exports = {
         message: error.message
       });
       
-      await interaction.editReply({ 
-        content: '⚠️ An error occurred while trying to reset the conversation history.', 
-        ephemeral: true
-      });
+      const embed = new EmbedBuilder()
+        .setColor(EMBED_COLOR_ERROR)
+        .setTitle(EMBED_TITLE_ERROR)
+        .setDescription(EMBED_DESC_ERROR);
+      await interaction.editReply({ embeds: [embed] });
     }
   },
 };

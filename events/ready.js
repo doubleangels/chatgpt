@@ -5,79 +5,70 @@
 const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
-const Sentry = require('../sentry');
 
+// Log message constants
+const LOG_BOT_ONLINE = 'Bot is online: %s';
+const LOG_BOT_ACTIVITY = 'Bot activity set to: %s';
+const LOG_GUILD_COUNT = 'Bot is in %d guilds';
+const LOG_GUILD_INFO = 'Guild: %s (ID: %s)';
+const LOG_GUILD_PERMISSIONS = 'Permissions in %s: %s';
+const LOG_ERROR_GETTING_GUILDS = 'Error getting guilds:';
+const LOG_ERROR_GETTING_PERMISSIONS = 'Error getting permissions for guild %s:';
+
+/**
+ * Bot's activity configuration
+ * @type {Object}
+ */
+const BOT_ACTIVITY = {
+  type: ActivityType.Playing,
+  name: 'with ChatGPT'
+};
+
+/**
+ * Ready event handler module
+ * @module events/ready
+ */
 module.exports = {
   name: 'ready',
   once: true,
   /**
-   * Executes when the bot comes online, setting up presence and initializing conversation history
+   * Handles the ready event when the bot starts up.
+   * Sets up the bot's activity, logs guild information,
+   * and initializes conversation history storage.
+   * 
    * @param {import('discord.js').Client} client - The Discord client instance
-   * @returns {Promise<void>}
+   * @returns {void}
    */
-  async execute(client) {
-    logger.info("Bot is online! Initializing setup procedures.", {
-      username: client.user.tag,
-      userId: client.user.id,
-      guilds: client.guilds.cache.size
-    });
-
+  execute(client) {
     try {
-      // Set bot's presence and activity status
-      await client.user.setPresence({
-        activities: [{
-          name: "for pings! 📡",
-          type: ActivityType.Watching
-        }],
-        status: "online"
-      });
-      
-      logger.debug("Bot presence and activity set successfully.", { 
-        activity: "Watching for pings!", 
-        status: "online" 
-      });
-      
-      try {
-        // Log information about connected guilds
-        const guildCount = client.guilds.cache.size;
-        logger.info(`Connected to ${guildCount} guild(s).`);
-        
-        client.guilds.cache.forEach(guild => {
-          logger.info(`Connected to guild: ${guild.name}.`, {
-            guildId: guild.id,
-            memberCount: guild.memberCount,
-            channelCount: guild.channels.cache.size
-          });
-        });
-      } catch (guildError) {
-        Sentry.captureException(guildError, {
-          extra: {
-            context: 'logging_connected_guilds',
-            botId: client.user.id
-          }
-        });
-      
-        logger.error("Failed to log connected guilds.", {
-          error: guildError.stack,
-          message: guildError.message
-        });
-      }
+      logger.info(LOG_BOT_ONLINE, client.user.tag);
 
-    } catch (error) {
-      Sentry.captureException(error, {
-        extra: {
-          context: 'setting_bot_presence',
-          botId: client.user.id
+      client.user.setActivity(BOT_ACTIVITY.name, { type: BOT_ACTIVITY.type });
+      logger.info(LOG_BOT_ACTIVITY, BOT_ACTIVITY.name);
+
+      const guilds = client.guilds.cache;
+      logger.info(LOG_GUILD_COUNT, guilds.size);
+
+      guilds.forEach(guild => {
+        try {
+          logger.info(LOG_GUILD_INFO, guild.name, guild.id);
+
+          const permissions = guild.members.me.permissions.toArray();
+          logger.info(LOG_GUILD_PERMISSIONS, guild.name, permissions.join(', '));
+        } catch (error) {
+          logger.error(LOG_ERROR_GETTING_PERMISSIONS, guild.name, {
+            error: error.stack,
+            message: error.message
+          });
         }
       });
-      
-      logger.error("Failed to set bot presence.", { 
+    } catch (error) {
+      logger.error(LOG_ERROR_GETTING_GUILDS, {
         error: error.stack,
         message: error.message
       });
     }
 
-    // Initialize conversation history storage if it doesn't exist
     if (!client.conversationHistory) {
       client.conversationHistory = new Map();
       logger.debug("Initialized conversation history storage.");
