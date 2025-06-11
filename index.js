@@ -112,7 +112,7 @@ for (const file of eventFiles) {
 }
 
 client.once('ready', async () => {
-  logger.info(LOG_BOT_ONLINE, client.user.tag);
+  logger.info(`Bot is online: ${client.user.tag}`);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -122,7 +122,7 @@ client.on('interactionCreate', async interaction => {
   if (!command) return;
 
   try {
-    logger.debug(LOG_EXECUTING_COMMAND, interaction.commandName, { 
+    logger.debug(`Executing command: ${interaction.commandName}`, { 
       user: interaction.user.tag,
       userId: interaction.user.id,
       guildId: interaction.guildId
@@ -155,11 +155,11 @@ client.on('interactionCreate', async interaction => {
 
   const command = client.commands.get(interaction.commandName);
   if (!command) {
-    logger.warn(LOG_UNKNOWN_CONTEXT_MENU, interaction.commandName);
+    logger.warn(`Unknown context menu command: ${interaction.commandName}`);
     return;
   }
 
-  logger.debug(LOG_EXECUTING_CONTEXT_MENU, interaction.commandName, { 
+  logger.debug(`Executing context menu command: ${interaction.commandName}`, { 
     user: interaction.user.tag,
     userId: interaction.user.id,
     guildId: interaction.guildId
@@ -167,7 +167,7 @@ client.on('interactionCreate', async interaction => {
 
   try {
     await command.execute(interaction);
-    logger.debug(LOG_CONTEXT_MENU_SUCCESS, interaction.commandName);
+    logger.debug(`Context menu command executed successfully: ${interaction.commandName}`);
   } catch (error) {
     logger.error(`Error executing context menu command: ${interaction.commandName}.`, { 
       error: error.stack,

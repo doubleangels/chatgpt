@@ -13,9 +13,7 @@ const LOG_BOT_ONLINE = 'Bot is online: %s';
 const LOG_BOT_ACTIVITY = 'Bot activity set to: %s';
 const LOG_GUILD_COUNT = 'Bot is in %d guilds';
 const LOG_GUILD_INFO = 'Guild: %s (ID: %s)';
-const LOG_GUILD_PERMISSIONS = 'Permissions in %s: %s';
 const LOG_ERROR_GETTING_GUILDS = 'Error getting guilds:';
-const LOG_ERROR_GETTING_PERMISSIONS = 'Error getting permissions for guild %s:';
 const LOG_INIT_HISTORY = "Initialized conversation history storage.";
 const LOG_SETUP_COMPLETE = "Bot is ready and setup complete.";
 
@@ -24,8 +22,8 @@ const LOG_SETUP_COMPLETE = "Bot is ready and setup complete.";
  * @type {Object}
  */
 const BOT_ACTIVITY = {
-  type: ActivityType.Playing,
-  name: 'with ChatGPT'
+  type: ActivityType.Watching,
+  name: 'for pings! 📡'
 };
 
 module.exports = {
@@ -41,29 +39,26 @@ module.exports = {
    */
   execute(client) {
     try {
-      logger.info(LOG_BOT_ONLINE, client.user.tag);
+      logger.info(`Bot is online: ${client.user.tag}`);
 
       client.user.setActivity(BOT_ACTIVITY.name, { type: BOT_ACTIVITY.type });
-      logger.info(LOG_BOT_ACTIVITY, BOT_ACTIVITY.name);
+      logger.info(`Bot activity set to: ${BOT_ACTIVITY.name}`);
 
       const guilds = client.guilds.cache;
-      logger.info(LOG_GUILD_COUNT, guilds.size);
+      logger.info(`Bot is in ${guilds.size} guilds`);
 
       guilds.forEach(guild => {
         try {
-          logger.info(LOG_GUILD_INFO, guild.name, guild.id);
-
-          const permissions = guild.members.me.permissions.toArray();
-          logger.info(LOG_GUILD_PERMISSIONS, guild.name, permissions.join(', '));
+          logger.info(`Guild: ${guild.name} (ID: ${guild.id})`);
         } catch (error) {
-          logger.error(LOG_ERROR_GETTING_PERMISSIONS, guild.name, {
+          logger.error(`Error getting guild info for ${guild.name}:`, {
             error: error.stack,
             message: error.message
           });
         }
       });
     } catch (error) {
-      logger.error(LOG_ERROR_GETTING_GUILDS, {
+      logger.error('Error getting guilds:', {
         error: error.stack,
         message: error.message
       });
