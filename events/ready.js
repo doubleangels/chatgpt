@@ -1,7 +1,6 @@
 const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
-const Sentry = require('../sentry');
 
 module.exports = {
   name: 'ready',
@@ -12,63 +11,41 @@ module.exports = {
    * 
    * @param {Client} client - The Discord client instance.
    */
-  async execute(client) {
-    logger.info("Bot is online! Initializing setup procedures.", {
-      username: client.user.tag,
-      userId: client.user.id,
-      guilds: client.guilds.cache.size
-    });
+  execute(client) {
+    logger.info(`Logged in as ${client.user.tag}!`);
 
-    try {
-      // Set the bot's presence with a custom activity.
-      await client.user.setPresence({
-        activities: [{
-          name: "for pings! 📡",
-          type: ActivityType.Watching
-        }],
-        status: "online"
-      });
-      
-      logger.debug("Bot presence and activity set successfully.", { 
-        activity: "Watching for pings!", 
-        status: "online" 
-      });
-      
-      // Log information about connected guilds.
+    // Set bot's activity status
+    client.user.setActivity('with ChatGPT', { type: ActivityType.Playing });
+
+    // Log the number of guilds the bot is in
+    logger.info(`Bot is in ${client.guilds.cache.size} guilds.`);
+
+    // Log each guild the bot is in
+    client.guilds.cache.forEach(guild => {
       try {
-        const guildCount = client.guilds.cache.size;
-        logger.info(`Connected to ${guildCount} guild(s).`);
-        
-        client.guilds.cache.forEach(guild => {
-          logger.info(`Connected to guild: ${guild.name}.`, {
-            guildId: guild.id,
-            memberCount: guild.memberCount,
-            channelCount: guild.channels.cache.size
-          });
-        });
+        logger.info(`Guild: ${guild.name} (${guild.id})`);
       } catch (guildError) {
-        Sentry.captureException(guildError, {
-          extra: {
-            context: 'logging_connected_guilds',
-            botId: client.user.id
-          }
-        });
-      
-        logger.error("Failed to log connected guilds.", {
+        logger.error(`Error logging guild info: ${guildError.message}`, {
           error: guildError.stack,
-          message: guildError.message
+          guildId: guild.id
         });
       }
+    });
 
-    } catch (error) {
-      Sentry.captureException(error, {
-        extra: {
-          context: 'setting_bot_presence',
-          botId: client.user.id
-        }
+    // Log the bot's permissions
+    try {
+      const permissions = client.guilds.cache.map(guild => {
+        const botMember = guild.members.cache.get(client.user.id);
+        return {
+          guildId: guild.id,
+          guildName: guild.name,
+          permissions: botMember?.permissions.toArray() || []
+        };
       });
-      
-      logger.error("Failed to set bot presence.", { 
+
+      logger.info('Bot permissions:', { permissions });
+    } catch (error) {
+      logger.error('Error logging bot permissions:', {
         error: error.stack,
         message: error.message
       });

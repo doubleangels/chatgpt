@@ -1,10 +1,23 @@
-const { Events } = require('discord.js');
+const { Events, MessageType } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage } = require('../utils/messageUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
-const Sentry = require('../sentry');
+const config = require('../config');
+
+// Constants for message handling
+const MAX_MESSAGE_LENGTH = 2000;
+const MESSAGE_TYPE_CHAT = MessageType.ChatInputCommand;
+const MESSAGE_TYPE_CONTEXT_MENU = MessageType.ContextMenuCommand;
+
+// Log messages
+const LOG_MESSAGE_RECEIVED = 'Message received from %s in channel %s';
+const LOG_MESSAGE_PROCESSING = 'Processing message from %s';
+const LOG_MESSAGE_SENDING = 'Sending message to channel %s';
+const LOG_MESSAGE_SENT = 'Message sent successfully to channel %s';
+const LOG_MESSAGE_ERROR = 'Error processing message: %s';
+const LOG_MESSAGE_SEND_ERROR = 'Error sending message: %s';
 
 module.exports = {
   name: Events.MessageCreate,
@@ -39,15 +52,6 @@ module.exports = {
           logger.debug(`Message ${message.id} is a reply to bot's message: ${referencedMessage.id}.`);
         }
       } catch (error) {
-        Sentry.captureException(error, {
-          extra: {
-            context: 'fetching_referenced_message',
-            messageId: message.id,
-            referenceId: message.reference.messageId,
-            channelId
-          }
-        });
-
         logger.error(`Failed to fetch referenced message ${message.reference.messageId}.`, {
           error: error.stack,
           messageId: message.id,
@@ -175,17 +179,6 @@ module.exports = {
             });
           }
         } catch (sendError) {
-          Sentry.captureException(sendError, {
-            extra: {
-              context: 'sending_message_chunk',
-              messageId: message.id,
-              chunkIndex: i,
-              totalChunks: chunks.length,
-              channelId,
-              userId
-            }
-          });
-          
           logger.error(`Failed to send message chunk ${i + 1} for message ${message.id}.`, {
             error: sendError.stack,
             chunk: i + 1,
@@ -203,17 +196,6 @@ module.exports = {
       });
 
     } catch (error) {
-      // Log, track errors with Sentry, and inform the user.
-      Sentry.captureException(error, {
-        extra: {
-          context: 'processing_message',
-          messageId: message.id,
-          userId,
-          channelId,
-          guildId: message.guild?.id
-        }
-      });
-      
       logger.error(`Error processing message ${message.id}.`, {
         error: error.stack,
         userId,
