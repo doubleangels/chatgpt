@@ -43,7 +43,12 @@ function getLogger(label) {
         format.label({ label }),
         format.timestamp(),
         format.printf(({ timestamp, level, message, label, ...meta }) => {
-          return `${timestamp} - [${label}] - [${level.toUpperCase()}] - ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+          // Handle format specifiers in the message
+          let formattedMessage = message;
+          if (meta && meta.args && Array.isArray(meta.args)) {
+            formattedMessage = message.replace(/%[sd]/g, () => meta.args.shift());
+          }
+          return `${timestamp} - [${label}] - [${level.toUpperCase()}] - ${formattedMessage} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
         })
       ),
       transports: [new transports.Console()]
