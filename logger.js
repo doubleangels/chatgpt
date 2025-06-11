@@ -30,23 +30,27 @@ function getLogger(label) {
       format.printf(({ timestamp, level, message, label, ...meta }) => {
         // Format the message with any additional arguments
         let formattedMessage = message;
-        if (typeof message === 'string' && meta && meta[0] !== undefined) {
-          const args = Array.isArray(meta[0]) ? meta[0] : [meta[0]];
-          formattedMessage = util.format(message, ...args);
-        }
-
-        // Remove the first meta entry if it was used for formatting
-        if (meta && meta[0] !== undefined) {
-          delete meta[0];
+        if (typeof message === 'string') {
+          const args = meta[0];
+          if (args !== undefined) {
+            if (Array.isArray(args)) {
+              formattedMessage = util.format(message, ...args);
+            } else {
+              formattedMessage = util.format(message, args);
+            }
+            delete meta[0];
+          }
         }
 
         // Format the final message
-        const finalMessage = LOG_FORMAT_TEMPLATE
-          .replace('%s', timestamp)
-          .replace('%s', label)
-          .replace('%s', level.toUpperCase())
-          .replace('%s', formattedMessage)
-          .replace('%s', Object.keys(meta).length ? JSON.stringify(meta) : '');
+        const finalMessage = util.format(
+          LOG_FORMAT_TEMPLATE,
+          timestamp,
+          label,
+          level.toUpperCase(),
+          formattedMessage,
+          Object.keys(meta).length ? JSON.stringify(meta) : ''
+        );
 
         return finalMessage;
       })
