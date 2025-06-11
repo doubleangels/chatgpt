@@ -1,10 +1,5 @@
 require('dotenv').config();
 
-/**
- * Configuration file for the bot.
- *
- * Exports environment variables used throughout the bot's code.
- */
 module.exports = {
   token: process.env.DISCORD_BOT_TOKEN,
   clientId: process.env.DISCORD_CLIENT_ID,

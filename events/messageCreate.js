@@ -11,13 +11,35 @@ const MAX_MESSAGE_LENGTH = 2000;
 const MESSAGE_TYPE_CHAT = MessageType.ChatInputCommand;
 const MESSAGE_TYPE_CONTEXT_MENU = MessageType.ContextMenuCommand;
 
-// Log messages
-const LOG_MESSAGE_RECEIVED = 'Message received from %s in channel %s';
-const LOG_MESSAGE_PROCESSING = 'Processing message from %s';
-const LOG_MESSAGE_SENDING = 'Sending message to channel %s';
-const LOG_MESSAGE_SENT = 'Message sent successfully to channel %s';
-const LOG_MESSAGE_ERROR = 'Error processing message: %s';
-const LOG_MESSAGE_SEND_ERROR = 'Error sending message: %s';
+// Message type constants
+const MESSAGE_TYPES = {
+  DEFAULT: MessageType.Default,
+  REPLY: MessageType.Reply,
+  CHAT_INPUT_COMMAND: MessageType.ChatInputCommand,
+  CONTEXT_MENU_COMMAND: MessageType.ContextMenuCommand
+};
+
+// Log message constants
+const LOG_MESSAGE_RECEIVED = 'Message received from %s in %s: %s';
+const LOG_PROCESSING_MESSAGE = 'Processing message from %s in %s';
+const LOG_MESSAGE_IGNORED = 'Ignoring message from %s (bot)';
+const LOG_MESSAGE_TYPE_IGNORED = 'Ignoring message of type: %s';
+const LOG_NO_HISTORY = 'No conversation history found for channel %s';
+const LOG_HISTORY_CREATED = 'Created new conversation history for channel %s';
+const LOG_HISTORY_UPDATED = 'Updated conversation history for channel %s';
+const LOG_SENDING_REPLY = 'Sending reply to %s in %s';
+const LOG_REPLY_SENT = 'Reply sent successfully to %s in %s';
+const LOG_ERROR_PROCESSING = 'Error processing message:';
+const LOG_ERROR_SENDING = 'Error sending reply:';
+
+// Message configuration
+const MESSAGE_CONFIG = {
+  maxHistoryLength: 10,
+  systemMessage: {
+    role: 'system',
+    content: 'You are a helpful assistant.'
+  }
+};
 
 module.exports = {
   name: Events.MessageCreate,
@@ -29,7 +51,16 @@ module.exports = {
    */
   async execute(message) {
     // Ignore messages from bots to prevent loops.
-    if (message.author.bot) return;
+    if (message.author.bot) {
+      logger.debug(LOG_MESSAGE_IGNORED, message.author.tag);
+      return;
+    }
+
+    // Ignore non-default message types
+    if (message.type !== MESSAGE_TYPES.DEFAULT) {
+      logger.debug(LOG_MESSAGE_TYPE_IGNORED, message.type);
+      return;
+    }
 
     const client = message.client;
     const botMention = `<@${client.user.id}>`;
@@ -78,37 +109,23 @@ module.exports = {
       });
     }
 
-    logger.info(`Bot triggered by ${message.author.tag} in #${channelName}.`, {
-      userId,
-      channelId,
-      guildId: message.guild?.id,
-      messageId: message.id,
-      hasMention: hasBotMention,
-      isReply: isReplyToBot
-    });
+    logger.info(LOG_MESSAGE_RECEIVED, message.author.tag, channelName, message.content);
+    logger.debug(LOG_PROCESSING_MESSAGE, message.author.tag, channelName);
 
     // Process user message - replace bot mention with a generic name.
     const userText = message.content.replace(botMention, '@ChatGPT').trim();
 
     // Initialize conversation history for this channel if it doesn't exist.
     if (!client.conversationHistory.has(channelId)) {
-      logger.info(`Initializing new conversation history for channel #${channelName} (${channelId}).`);
+      logger.debug(LOG_NO_HISTORY, channelId);
       client.conversationHistory.set(channelId, new Map());
+      logger.info(LOG_HISTORY_CREATED, channelId);
     }
 
     const channelHistory = client.conversationHistory.get(channelId);
     // Initialize user history if it doesn't exist.
     if (!channelHistory.has(userId)) {
-      channelHistory.set(userId, [
-        {
-          role: 'system',
-          content: `You are a helpful assistant.
-                    The users that you help know that you can't send messages on their behalf.
-                    Please send responses in a clear and concise manner, using Discord message formatting.
-                    Limit responses to less than 2000 characters.
-                    Maintain conversation continuity and context.`
-        }
-      ]);
+      channelHistory.set(userId, [MESSAGE_CONFIG.systemMessage]);
     }
 
     // Get conversation history for the user.
@@ -130,20 +147,12 @@ module.exports = {
     });
 
     // Ensure history doesn't exceed maximum length.
-    if (userHistory.length > maxHistoryLength + 1) { // +1 for system message
-      logger.debug(`Trimming conversation history for user ${userId} in channel ${channelId} (current: ${userHistory.length}, max: ${maxHistoryLength + 1}).`);
-
-      while (userHistory.length > maxHistoryLength + 1) {
-        if (userHistory[0].role === 'system') {
-          // Skip the system message.
-          if (userHistory.length > 1) {
-            userHistory.splice(1, 1);
-          }
-        } else {
-          userHistory.shift();
-        }
-      }
+    if (userHistory.length > MESSAGE_CONFIG.maxHistoryLength) {
+      logger.debug(`Trimming conversation history for user ${userId} in channel ${channelId} (current: ${userHistory.length}, max: ${MESSAGE_CONFIG.maxHistoryLength}).`);
+      userHistory.splice(1, userHistory.length - MESSAGE_CONFIG.maxHistoryLength);
     }
+
+    logger.debug(LOG_HISTORY_UPDATED, channelId);
 
     try {
       // Generate AI response.
@@ -151,7 +160,7 @@ module.exports = {
       const reply = await generateAIResponse(userHistory);
 
       if (!reply) {
-        logger.warn(`Failed to generate AI response for message ${message.id} in channel ${channelId}.`);
+        logger.warn('No reply generated from AI service.');
         await message.reply({
           content: "⚠️ I couldn't generate a response.",
           ephemeral: true
@@ -160,21 +169,23 @@ module.exports = {
       }
 
       // Split response if needed and send.
-      const chunks = splitMessage(reply);
-      logger.info(`Sending AI response in ${chunks.length} chunks for message ${message.id} in channel ${channelId}.`);
+      const replyChunks = splitMessage(reply);
+      logger.info(`Sending AI response in ${replyChunks.length} chunks for message ${message.id} in channel ${channelId}.`);
 
-      for (let i = 0; i < chunks.length; i++) {
+      logger.info(LOG_SENDING_REPLY, message.author.tag, channelName);
+
+      for (let i = 0; i < replyChunks.length; i++) {
         try {
           if (i === 0) {
             // First chunk is sent as a reply to maintain context.
             await message.reply({
-              content: chunks[i],
+              content: replyChunks[i],
               ephemeral: false
             });
           } else {
             // Additional chunks are sent as follow-up messages.
             await message.channel.send({
-              content: chunks[i],
+              content: replyChunks[i],
               ephemeral: false
             });
           }
@@ -182,7 +193,7 @@ module.exports = {
           logger.error(`Failed to send message chunk ${i + 1} for message ${message.id}.`, {
             error: sendError.stack,
             chunk: i + 1,
-            totalChunks: chunks.length,
+            totalChunks: replyChunks.length,
             errorMessage: sendError.message
           });
         }
@@ -195,12 +206,13 @@ module.exports = {
         content: reply
       });
 
+      logger.info(LOG_REPLY_SENT, message.author.tag, channelName);
     } catch (error) {
-      logger.error(`Error processing message ${message.id}.`, {
+      logger.error(LOG_ERROR_PROCESSING, {
         error: error.stack,
+        message: error.message,
         userId,
-        channelId,
-        errorMessage: error.message
+        channelId
       });
       
       // Send error message to user.

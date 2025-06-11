@@ -3,6 +3,21 @@ const { openaiApiKey, modelName } = require('../config');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
+// OpenAI configuration
+const OPENAI_CONFIG = {
+  maxTokens: 500,
+  temperature: 0.7
+};
+
+// Log message constants
+const LOG_EMPTY_CONVERSATION = 'Cannot generate AI response: Empty conversation provided.';
+const LOG_SENDING_CONVERSATION = 'Sending conversation to OpenAI API using model: %s.';
+const LOG_API_REQUEST_FAILED = 'API request failed.';
+const LOG_RECEIVED_RESPONSE = 'Received response from OpenAI API.';
+const LOG_NO_CHOICES = 'OpenAI API returned no choices in the response.';
+const LOG_RESPONSE_GENERATED = 'Generated AI response successfully.';
+const LOG_ERROR_GENERATING = 'Error generating AI response.';
+
 // Initialize OpenAI client with API key from config.
 const openai = new OpenAI({
   apiKey: openaiApiKey
@@ -17,13 +32,13 @@ const openai = new OpenAI({
  */
 async function generateAIResponse(conversation) {
   if (!conversation || conversation.length === 0) {
-    logger.error("Cannot generate AI response: Empty conversation provided.");
+    logger.error(LOG_EMPTY_CONVERSATION);
     return '';
   }
 
   try {
     // Log the conversation being sent (sensitive data, use debug level).
-    logger.debug(`Sending conversation to OpenAI API using model: ${modelName}.`, {
+    logger.debug(LOG_SENDING_CONVERSATION, modelName, {
       messageCount: conversation.length,
       model: modelName
     });
@@ -34,11 +49,11 @@ async function generateAIResponse(conversation) {
       response = await openai.chat.completions.create({
         model: modelName,
         messages: conversation,
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: OPENAI_CONFIG.maxTokens,
+        temperature: OPENAI_CONFIG.temperature,
       });
     } catch (apiError) {
-      logger.error("API request failed.", {
+      logger.error(LOG_API_REQUEST_FAILED, {
         error: apiError.stack,
         message: apiError.message,
         model: modelName,
@@ -48,7 +63,7 @@ async function generateAIResponse(conversation) {
     }
 
     // Log successful API response.
-    logger.debug("Received response from OpenAI API.", {
+    logger.debug(LOG_RECEIVED_RESPONSE, {
       choices: response.choices?.length || 0,
       completionTokens: response.usage?.completion_tokens,
       totalTokens: response.usage?.total_tokens,
@@ -57,7 +72,7 @@ async function generateAIResponse(conversation) {
     
     // Check if the response contains any choices.
     if (!response.choices || response.choices.length === 0) {
-      logger.warn("OpenAI API returned no choices in the response.", {
+      logger.warn(LOG_NO_CHOICES, {
         model: modelName,
         responseStatus: response.status,
         responseId: response.id
@@ -67,7 +82,7 @@ async function generateAIResponse(conversation) {
 
     // Extract the reply text from the first choice.
     const reply = response.choices[0].message.content;
-    logger.info("Generated AI response successfully.", {
+    logger.info(LOG_RESPONSE_GENERATED, {
       responseId: response.id,
       charCount: reply.length,
       tokensUsed: response.usage?.total_tokens,
@@ -77,7 +92,7 @@ async function generateAIResponse(conversation) {
     return reply;
   } catch (error) {
     // Log and track errors.
-    logger.error("Error generating AI response.", {
+    logger.error(LOG_ERROR_GENERATING, {
       error: error.stack,
       message: error.message,
       model: modelName,
@@ -88,4 +103,5 @@ async function generateAIResponse(conversation) {
     return '';
   }
 }
+
 module.exports = { generateAIResponse };

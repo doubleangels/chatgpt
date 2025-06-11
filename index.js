@@ -9,9 +9,9 @@ const EVENTS_DIRECTORY = 'events';
 const FILE_EXTENSION = '.js';
 
 const BOT_INTENTS = [
-  GatewayIntentBits.Guilds,           // Allows bot to access basic guild (server) data.
-  GatewayIntentBits.GuildMessages,    // Allows bot to read messages in guilds.
-  GatewayIntentBits.MessageContent,   // Allows bot to read the content of messages.
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent,
 ];
 
 const ERROR_MESSAGE_COMMAND = 'There was an error executing that command!';
@@ -31,11 +31,6 @@ const LOG_SHUTDOWN_SIGTERM = 'Shutdown signal (SIGTERM) received. Exiting...';
 
 const PROCESS_EXIT_DELAY = 1000;
 
-/**
- * This script initializes and configures a Discord bot using discord.js.
- * It loads commands and event handlers and handles bot interactions, 
- * including slash commands and context menu commands.
- */
 const client = new Client({
   intents: BOT_INTENTS
 });
