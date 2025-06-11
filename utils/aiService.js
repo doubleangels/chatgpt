@@ -3,10 +3,13 @@ const { openaiApiKey, modelName } = require('../config');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
-// OpenAI configuration
+/**
+ * Configuration for OpenAI API requests
+ * @type {Object}
+ */
 const OPENAI_CONFIG = {
-  maxTokens: 500,
-  temperature: 0.7
+  maxTokens: 500,      // Maximum tokens in the response
+  temperature: 0.7     // Controls randomness (0.0 to 1.0)
 };
 
 // Log message constants
@@ -18,17 +21,19 @@ const LOG_NO_CHOICES = 'OpenAI API returned no choices in the response.';
 const LOG_RESPONSE_GENERATED = 'Generated AI response successfully.';
 const LOG_ERROR_GENERATING = 'Error generating AI response.';
 
-// Initialize OpenAI client with API key from config.
+/**
+ * OpenAI client instance configured with API key
+ * @type {OpenAI}
+ */
 const openai = new OpenAI({
   apiKey: openaiApiKey
 });
 
 /**
- * Generates an AI response based on conversation history.
- * Sends the conversation to OpenAI API and returns the generated response.
+ * Generates an AI response using OpenAI's API based on the provided conversation history.
  * 
- * @param {Array} conversation - Array of message objects in OpenAI format.
- * @returns {Promise<string>} - The AI generated response text.
+ * @param {Array<{role: string, content: string}>} conversation - Array of conversation messages
+ * @returns {Promise<string>} The generated AI response, or empty string if generation fails
  */
 async function generateAIResponse(conversation) {
   if (!conversation || conversation.length === 0) {
@@ -37,7 +42,6 @@ async function generateAIResponse(conversation) {
   }
 
   try {
-    // Log the conversation being sent (sensitive data, use debug level).
     logger.debug(LOG_SENDING_CONVERSATION, modelName, {
       messageCount: conversation.length,
       model: modelName
@@ -45,7 +49,6 @@ async function generateAIResponse(conversation) {
     
     let response;
     try {
-      // Make API request to OpenAI.
       response = await openai.chat.completions.create({
         model: modelName,
         messages: conversation,
@@ -62,7 +65,6 @@ async function generateAIResponse(conversation) {
       return '';
     }
 
-    // Log successful API response.
     logger.debug(LOG_RECEIVED_RESPONSE, {
       choices: response.choices?.length || 0,
       completionTokens: response.usage?.completion_tokens,
@@ -70,7 +72,6 @@ async function generateAIResponse(conversation) {
       responseId: response.id
     });
     
-    // Check if the response contains any choices.
     if (!response.choices || response.choices.length === 0) {
       logger.warn(LOG_NO_CHOICES, {
         model: modelName,
@@ -80,7 +81,6 @@ async function generateAIResponse(conversation) {
       return '';
     }
 
-    // Extract the reply text from the first choice.
     const reply = response.choices[0].message.content;
     logger.info(LOG_RESPONSE_GENERATED, {
       responseId: response.id,
@@ -91,7 +91,6 @@ async function generateAIResponse(conversation) {
     
     return reply;
   } catch (error) {
-    // Log and track errors.
     logger.error(LOG_ERROR_GENERATING, {
       error: error.stack,
       message: error.message,

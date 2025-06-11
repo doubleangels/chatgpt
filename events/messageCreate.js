@@ -6,11 +6,16 @@ const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
 const config = require('../config');
 
+/**
+ * Message types that the bot will respond to
+ * @type {Object}
+ */
 const MESSAGE_TYPES = {
   DEFAULT: MessageType.Default,
   REPLY: MessageType.Reply
 };
 
+// Log message constants
 const LOG_MESSAGE_RECEIVED = 'Message received from %s in %s: %s';
 const LOG_PROCESSING_MESSAGE = 'Processing message from %s in %s';
 const LOG_MESSAGE_IGNORED = 'Ignoring message from %s (bot)';
@@ -23,6 +28,10 @@ const LOG_REPLY_SENT = 'Reply sent successfully to %s in %s';
 const LOG_ERROR_PROCESSING = 'Error processing message:';
 const LOG_ERROR_SENDING = 'Error sending reply:';
 
+/**
+ * Configuration for conversation history and system message
+ * @type {Object}
+ */
 const MESSAGE_CONFIG = {
   maxHistoryLength: 10,
   systemMessage: {
@@ -31,8 +40,20 @@ const MESSAGE_CONFIG = {
   }
 };
 
+/**
+ * Message create event handler module
+ * @module events/messageCreate
+ */
 module.exports = {
   name: Events.MessageCreate,
+  /**
+   * Handles incoming messages and generates AI responses when appropriate.
+   * Processes messages that mention the bot or are replies to the bot's messages.
+   * Maintains conversation history for each user in each channel.
+   * 
+   * @param {import('discord.js').Message} message - The message that triggered the event
+   * @returns {Promise<void>}
+   */
   async execute(message) {
     if (message.author.bot) {
       logger.debug(LOG_MESSAGE_IGNORED, message.author.tag);

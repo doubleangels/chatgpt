@@ -1,9 +1,12 @@
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
-// Message configuration
+/**
+ * Configuration for message splitting functionality
+ * @type {Object}
+ */
 const MESSAGE_CONFIG = {
-  defaultLimit: 2000,
+  defaultLimit: 2000,  // Discord's maximum message length
   errorMessage: 'Error splitting message'
 };
 
@@ -19,22 +22,20 @@ const LOG_SPLIT_COMPLETE = 'Message split into %d chunks.';
 const LOG_SPLIT_ERROR = 'Error in splitMessage function.';
 
 /**
- * Splits a message into chunks that fit within Discord's character limit.
- * Discord has a 2000 character limit per message, so longer messages need to be split.
+ * Splits a message into chunks that fit within Discord's message length limit.
+ * Attempts to split on newlines when possible, but will split mid-line if necessary.
  * 
- * @param {string} text - The message text to split.
- * @param {number} limit - Maximum characters per chunk (default: 2000).
- * @returns {Array<string>} - Array of message chunks.
+ * @param {string} text - The text to split into chunks
+ * @param {number} [limit=MESSAGE_CONFIG.defaultLimit] - Maximum length for each chunk
+ * @returns {string[]} Array of message chunks
  */
 function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
   try {
-    // Return as-is if text is empty or undefined.
     if (!text) {
       logger.debug(LOG_EMPTY_TEXT);
       return [''];
     }
     
-    // Return as-is if text is within the limit.
     if (text.length <= limit) {
       logger.debug(LOG_WITHIN_LIMIT, text.length, limit);
       return [text];
@@ -47,19 +48,15 @@ function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
     let currentChunk = '';
     let lineCount = 0;
     
-    // Process each line and add to chunks as needed.
     for (const line of lines) {
       lineCount++;
       
-      // Check if adding this line would exceed the limit.
       if (currentChunk.length + line.length + 1 > limit) {
         if (currentChunk) {
-          // Current chunk is full, push it and start a new one.
           chunks.push(currentChunk);
           logger.debug(LOG_CHUNK_CREATED, chunks.length, currentChunk.length);
           currentChunk = line;
         } else {
-          // Line itself is longer than the limit, split it.
           logger.debug(LOG_LINE_EXCEEDS_LIMIT, lineCount, line.length);
           let remainingLine = line;
           while (remainingLine.length > limit) {
@@ -71,12 +68,10 @@ function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
           currentChunk = remainingLine.length > 0 ? remainingLine : '';
         }
       } else {
-        // Add line to current chunk.
         currentChunk = currentChunk ? `${currentChunk}\n${line}` : line;
       }
     }
     
-    // Add the last chunk if it's not empty.
     if (currentChunk) {
       chunks.push(currentChunk);
       logger.debug(LOG_FINAL_CHUNK, chunks.length, currentChunk.length);
@@ -96,7 +91,6 @@ function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
       message: error.message,
       textLength: text?.length
     });
-    // Return an empty array on error.
     return [MESSAGE_CONFIG.errorMessage];
   }
 }

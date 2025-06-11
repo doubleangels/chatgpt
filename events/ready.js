@@ -11,40 +11,44 @@ const LOG_GUILD_PERMISSIONS = 'Permissions in %s: %s';
 const LOG_ERROR_GETTING_GUILDS = 'Error getting guilds:';
 const LOG_ERROR_GETTING_PERMISSIONS = 'Error getting permissions for guild %s:';
 
-// Activity configuration
+/**
+ * Bot's activity configuration
+ * @type {Object}
+ */
 const BOT_ACTIVITY = {
   type: ActivityType.Playing,
   name: 'with ChatGPT'
 };
 
+/**
+ * Ready event handler module
+ * @module events/ready
+ */
 module.exports = {
   name: 'ready',
   once: true,
   /**
-   * Executes once when the bot comes online.
-   * Sets up the bot's presence and initial state.
+   * Handles the ready event when the bot starts up.
+   * Sets up the bot's activity, logs guild information,
+   * and initializes conversation history storage.
    * 
-   * @param {Client} client - The Discord client instance.
+   * @param {import('discord.js').Client} client - The Discord client instance
+   * @returns {void}
    */
   execute(client) {
     try {
-      // Log that the bot is online
       logger.info(LOG_BOT_ONLINE, client.user.tag);
 
-      // Set bot activity
       client.user.setActivity(BOT_ACTIVITY.name, { type: BOT_ACTIVITY.type });
       logger.info(LOG_BOT_ACTIVITY, BOT_ACTIVITY.name);
 
-      // Get and log guild information
       const guilds = client.guilds.cache;
       logger.info(LOG_GUILD_COUNT, guilds.size);
 
-      // Log detailed information about each guild
       guilds.forEach(guild => {
         try {
           logger.info(LOG_GUILD_INFO, guild.name, guild.id);
 
-          // Get bot's permissions in the guild
           const permissions = guild.members.me.permissions.toArray();
           logger.info(LOG_GUILD_PERMISSIONS, guild.name, permissions.join(', '));
         } catch (error) {
@@ -61,7 +65,6 @@ module.exports = {
       });
     }
 
-    // Initialize conversation history Map if it doesn't exist.
     if (!client.conversationHistory) {
       client.conversationHistory = new Map();
       logger.debug("Initialized conversation history storage.");

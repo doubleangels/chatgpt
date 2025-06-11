@@ -1,20 +1,24 @@
 const { createLogger, format, transports } = require('winston');
 const config = require('./config');
 
+/** Log format field names */
 const LOG_FORMAT_TIMESTAMP = 'timestamp';
 const LOG_FORMAT_LABEL = 'label';
 const LOG_FORMAT_LEVEL = 'level';
 const LOG_FORMAT_MESSAGE = 'message';
 
+/** Template for log message format */
 const LOG_FORMAT_TEMPLATE = '%s - [%s] - [%s] - %s %s';
 
+/** Console transport identifier */
 const LOG_TRANSPORT_CONSOLE = 'console';
 
 /**
- * Returns a configured Winston logger with the specified label.
- *
- * @param {string} label - The label to associate with log messages.
- * @returns {Logger} A Winston logger instance.
+ * Creates and returns a configured Winston logger instance.
+ * The logger includes timestamp, label, level, and message formatting.
+ * 
+ * @param {string} label - The label to identify the source of the log message
+ * @returns {import('winston').Logger} Configured Winston logger instance
  */
 function getLogger(label) {
   return createLogger({

@@ -2,23 +2,41 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
-const EMBED_COLOR_SUCCESS = 0x00FF00;
-const EMBED_COLOR_ERROR = 0xFF0000;
+// Embed color constants
+const EMBED_COLOR_SUCCESS = 0x00FF00; // Green
+const EMBED_COLOR_ERROR = 0xFF0000;   // Red
 
+// Embed title constants
 const EMBED_TITLE_NO_HISTORY = '⚠️ No History Found';
 const EMBED_TITLE_CLEAR = '🗑️ History Cleared';
 const EMBED_TITLE_ERROR = '⚠️ Error';
 
+// Embed description constants
 const EMBED_DESC_NO_CHANNEL_HISTORY = 'No conversation history found for this channel.';
 const EMBED_DESC_NO_USER_HISTORY = 'No conversation history found for you in this channel.';
 const EMBED_DESC_CLEAR = 'Your conversation history has been cleared for this channel.';
 const EMBED_DESC_ERROR = 'An error occurred while trying to clear your conversation history.';
 
+/**
+ * Clear command module that allows users to clear their conversation history in a specific channel.
+ * @module commands/clear
+ */
 module.exports = {
+  /**
+   * Command data for the clear command.
+   * @type {SlashCommandBuilder}
+   */
   data: new SlashCommandBuilder()
     .setName('clear')
     .setDescription('Clear your conversation history for this channel.'),
 
+  /**
+   * Executes the clear command.
+   * Clears the conversation history for the user in the current channel.
+   * 
+   * @param {import('discord.js').CommandInteraction} interaction - The interaction object
+   * @returns {Promise<void>}
+   */
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const client = interaction.client;

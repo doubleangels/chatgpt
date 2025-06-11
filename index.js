@@ -4,19 +4,28 @@ const path = require('path');
 const logger = require('./logger')(path.basename(__filename));
 const config = require('./config');
 
+/** Directory containing command files */
 const COMMANDS_DIRECTORY = 'commands';
+/** Directory containing event handler files */
 const EVENTS_DIRECTORY = 'events';
+/** File extension for command and event files */
 const FILE_EXTENSION = '.js';
 
+/**
+ * Bot's required Discord gateway intents
+ * @type {Array<number>}
+ */
 const BOT_INTENTS = [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMessages,
   GatewayIntentBits.MessageContent,
 ];
 
+// Error message constants
 const ERROR_MESSAGE_COMMAND = 'There was an error executing that command!';
 const ERROR_MESSAGE_CONTEXT_MENU = 'There was an error executing that command!';
 
+// Log message constants
 const LOG_BOT_ONLINE = 'Bot is online: %s';
 const LOG_EXECUTING_COMMAND = 'Executing command: %s';
 const LOG_EXECUTING_CONTEXT_MENU = 'Executing context menu command: %s';
@@ -29,15 +38,22 @@ const LOG_UNHANDLED_REJECTION = 'Unhandled Promise Rejection.';
 const LOG_SHUTDOWN_SIGINT = 'Shutdown signal (SIGINT) received. Exiting...';
 const LOG_SHUTDOWN_SIGTERM = 'Shutdown signal (SIGTERM) received. Exiting...';
 
+/** Delay in milliseconds before process exit after uncaught exception */
 const PROCESS_EXIT_DELAY = 1000;
 
+/**
+ * Discord client instance with required intents
+ * @type {Client}
+ */
 const client = new Client({
   intents: BOT_INTENTS
 });
 
+// Initialize collections for commands and conversation history
 client.commands = new Collection();
 client.conversationHistory = new Map();
 
+// Load command files
 const commandsPath = path.join(__dirname, COMMANDS_DIRECTORY);
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(FILE_EXTENSION));
 
@@ -54,6 +70,7 @@ for (const file of commandFiles) {
   }
 }
 
+// Load event handler files
 const eventsPath = path.join(__dirname, EVENTS_DIRECTORY);
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(FILE_EXTENSION));
 
