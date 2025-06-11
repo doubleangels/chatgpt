@@ -27,11 +27,18 @@ function getLogger(label) {
       format.label({ label }),
       format.timestamp(),
       format.printf(({ timestamp, level, message, label, ...meta }) => {
+        // Handle format specifiers in the message
+        let formattedMessage = message;
+        if (typeof message === 'string' && meta && meta[0] !== undefined) {
+          const args = Array.isArray(meta[0]) ? meta[0] : [meta[0]];
+          formattedMessage = message.replace(/%[sd]/g, () => args.shift() || '');
+        }
+
         return LOG_FORMAT_TEMPLATE.replace('%s', timestamp)
           .replace('%s', label)
           .replace('%s', level.toUpperCase())
-          .replace('%s', message)
-          .replace('%s', Object.keys(meta).length ? JSON.stringify(meta) : '');
+          .replace('%s', formattedMessage)
+          .replace('%s', Object.keys(meta).length > 1 ? JSON.stringify(meta) : '');
       })
     ),
     transports: [new transports.Console()]
