@@ -1,6 +1,18 @@
 const { createLogger, format, transports } = require('winston');
 const config = require('./config');
 
+// Log format configuration
+const LOG_FORMAT_TIMESTAMP = 'timestamp';
+const LOG_FORMAT_LABEL = 'label';
+const LOG_FORMAT_LEVEL = 'level';
+const LOG_FORMAT_MESSAGE = 'message';
+
+// Log format template
+const LOG_FORMAT_TEMPLATE = '%s - [%s] - [%s] - %s %s';
+
+// Transport configuration
+const LOG_TRANSPORT_CONSOLE = 'console';
+
 /**
  * Returns a configured Winston logger with the specified label.
  *
@@ -18,7 +30,11 @@ function getLogger(label) {
       // Define the log message format.
       format.printf(({ timestamp, level, message, label, ...meta }) => {
         // Build the log message string with timestamp, label, level, message, and additional metadata (if any).
-        return `${timestamp} - [${label}] - [${level.toUpperCase()}] - ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+        return LOG_FORMAT_TEMPLATE.replace('%s', timestamp)
+          .replace('%s', label)
+          .replace('%s', level.toUpperCase())
+          .replace('%s', message)
+          .replace('%s', Object.keys(meta).length ? JSON.stringify(meta) : '');
       })
     ),
     // Output log messages to the console.
