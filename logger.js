@@ -1,63 +1,57 @@
+/**
+ * Logger module for the Discord bot.
+ * Creates and configures Winston logger instances with consistent formatting.
+ * @module logger
+ */
+
 const { createLogger, format, transports } = require('winston');
-const util = require('util');
 const config = require('./config');
 
-/** Log format field names */
-const LOG_FORMAT_TIMESTAMP = 'timestamp';
-const LOG_FORMAT_LABEL = 'label';
-const LOG_FORMAT_LEVEL = 'level';
-const LOG_FORMAT_MESSAGE = 'message';
-
-/** Template for log message format */
-const LOG_FORMAT_TEMPLATE = '%s - [%s] - [%s] - %s %s';
-
-/** Console transport identifier */
-const LOG_TRANSPORT_CONSOLE = 'console';
+/**
+ * Error messages specific to logger operations.
+ * @type {Object}
+ */
+const ERROR_MESSAGES = {
+    UNEXPECTED_ERROR: "⚠️ An unexpected error occurred in the logger.",
+    INVALID_LABEL: "⚠️ Invalid logger label provided.",
+    LOGGER_CREATION_FAILED: "⚠️ Failed to create logger instance.",
+    INVALID_LOG_LEVEL: "⚠️ Invalid log level provided.",
+    TRANSPORT_CREATION_FAILED: "⚠️ Failed to create logger transport.",
+    FORMAT_CONFIGURATION_FAILED: "⚠️ Failed to configure logger format.",
+    INVALID_MESSAGE: "⚠️ Invalid log message provided.",
+    INVALID_METADATA: "⚠️ Invalid log metadata provided.",
+    LOG_WRITE_FAILED: "⚠️ Failed to write log message.",
+    CONFIG_MISSING: "⚠️ Required logger configuration missing."
+};
 
 /**
- * Creates and returns a configured Winston logger instance.
- * The logger includes timestamp, label, level, and message formatting.
- * 
- * @param {string} label - The label to identify the source of the log message
- * @returns {import('winston').Logger} Configured Winston logger instance
+ * Creates a new logger instance with the specified label.
+ * @function getLogger
+ * @param {string} label - The label to identify the logger instance
+ * @throws {Error} If the label is invalid or logger creation fails
+ * @returns {winston.Logger} A configured Winston logger instance
  */
 function getLogger(label) {
-  return createLogger({
-    level: config.logLevel,
-    format: format.combine(
-      format.label({ label }),
-      format.timestamp(),
-      format.printf(({ timestamp, level, message, label, ...meta }) => {
-        // Format the message with any additional arguments
-        let formattedMessage = message;
-        const args = [];
-        
-        // Collect all arguments for formatting
-        for (let i = 0; meta[i] !== undefined; i++) {
-          args.push(meta[i]);
-          delete meta[i];
-        }
+  if (!label || typeof label !== 'string') {
+    throw new Error(ERROR_MESSAGES.INVALID_LABEL);
+  }
 
-        // Format the message if we have arguments
-        if (args.length > 0) {
-          formattedMessage = util.format(message, ...args);
-        }
-
-        // Format the final message
-        const finalMessage = util.format(
-          LOG_FORMAT_TEMPLATE,
-          timestamp,
-          label,
-          level.toUpperCase(),
-          formattedMessage,
-          Object.keys(meta).length ? JSON.stringify(meta) : ''
-        );
-
-        return finalMessage;
-      })
-    ),
-    transports: [new transports.Console()]
-  });
+  try {
+    return createLogger({
+      level: config.logLevel,
+      format: format.combine(
+        format.label({ label }),
+        format.timestamp(),
+        format.printf(({ timestamp, level, message, label, ...meta }) => {
+          return `${timestamp} - [${label}] - [${level.toUpperCase()}] - ${message} ${Object.keys(meta).length ? JSON.stringify(meta) : ''}`;
+        })
+      ),
+      transports: [new transports.Console()]
+    });
+  } catch (error) {
+    console.error('Failed to create logger:', error);
+    throw new Error(ERROR_MESSAGES.LOGGER_CREATION_FAILED);
+  }
 }
 
 module.exports = getLogger;
