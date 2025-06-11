@@ -1,6 +1,21 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
+
+// Embed colors
+const EMBED_COLOR_SUCCESS = 0x00FF00;
+const EMBED_COLOR_ERROR = 0xFF0000;
+
+// Embed titles
+const EMBED_TITLE_NO_HISTORY = '⚠️ No History Found';
+const EMBED_TITLE_CLEAR = '🗑️ History Cleared';
+const EMBED_TITLE_ERROR = '⚠️ Error';
+
+// Embed descriptions
+const EMBED_DESC_NO_CHANNEL_HISTORY = 'No conversation history found for this channel.';
+const EMBED_DESC_NO_USER_HISTORY = 'No conversation history found for you in this channel.';
+const EMBED_DESC_CLEAR = 'Your conversation history has been cleared for this channel.';
+const EMBED_DESC_ERROR = 'An error occurred while trying to clear your conversation history.';
 
 module.exports = {
   // Define the command as a slash command with no special permissions.
@@ -31,10 +46,11 @@ module.exports = {
       // Check if there's conversation history for this channel.
       if (!client.conversationHistory.has(channelId)) {
         logger.debug(`No conversation history found for channel ${channelId}.`);
-        await interaction.editReply({ 
-          content: '⚠️ No conversation history found for this channel.', 
-          ephemeral: true 
-        });
+        const embed = new EmbedBuilder()
+          .setColor(EMBED_COLOR_ERROR)
+          .setTitle(EMBED_TITLE_NO_HISTORY)
+          .setDescription(EMBED_DESC_NO_CHANNEL_HISTORY);
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
@@ -43,10 +59,11 @@ module.exports = {
       // Check if there's history for the specific user.
       if (!userHistoryMap.has(userId)) {
         logger.debug(`No conversation history found for user ${userId} in channel ${channelId}.`);
-        await interaction.editReply({ 
-          content: '⚠️ No conversation history found for you in this channel.', 
-          ephemeral: true 
-        });
+        const embed = new EmbedBuilder()
+          .setColor(EMBED_COLOR_ERROR)
+          .setTitle(EMBED_TITLE_NO_HISTORY)
+          .setDescription(EMBED_DESC_NO_USER_HISTORY);
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
@@ -63,10 +80,11 @@ module.exports = {
       });
 
       // Inform the user that the clear was successful.
-      await interaction.editReply({ 
-        content: '🗑️ Your conversation history has been cleared for this channel.', 
-        ephemeral: false
-      });
+      const embed = new EmbedBuilder()
+        .setColor(EMBED_COLOR_SUCCESS)
+        .setTitle(EMBED_TITLE_CLEAR)
+        .setDescription(EMBED_DESC_CLEAR);
+      await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       // Log and inform the user of any errors that occur during execution.
       logger.error(`Error executing clear command in channel ${channelId}.`, {
@@ -74,10 +92,11 @@ module.exports = {
         userId,
         message: error.message
       });
-      await interaction.editReply({ 
-        content: '⚠️ An error occurred while trying to clear your conversation history.', 
-        ephemeral: true
-      });
+      const embed = new EmbedBuilder()
+        .setColor(EMBED_COLOR_ERROR)
+        .setTitle(EMBED_TITLE_ERROR)
+        .setDescription(EMBED_DESC_ERROR);
+      await interaction.editReply({ embeds: [embed] });
     }
   },
 };

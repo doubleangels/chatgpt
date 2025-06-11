@@ -1,6 +1,20 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
+
+// Embed colors
+const EMBED_COLOR_SUCCESS = 0x00FF00;
+const EMBED_COLOR_ERROR = 0xFF0000;
+
+// Embed titles
+const EMBED_TITLE_NO_HISTORY = '⚠️ No History Found';
+const EMBED_TITLE_RESET = '🗑️ History Reset';
+const EMBED_TITLE_ERROR = '⚠️ Error';
+
+// Embed descriptions
+const EMBED_DESC_NO_HISTORY = 'No conversation history found for this channel.';
+const EMBED_DESC_RESET = 'Conversation history has been reset for this channel.';
+const EMBED_DESC_ERROR = 'An error occurred while trying to reset the conversation history.';
 
 module.exports = {
   // Define the command as a slash command with administrator permissions.
@@ -32,10 +46,11 @@ module.exports = {
       // Check if there's conversation history for this channel.
       if (!client.conversationHistory.has(channelId)) {
         logger.debug(`Reset command failed - no conversation history found for channel ${channelId}.`);
-        await interaction.editReply({ 
-          content: '⚠️ No conversation history found for this channel.', 
-          ephemeral: true 
-        });
+        const embed = new EmbedBuilder()
+          .setColor(EMBED_COLOR_ERROR)
+          .setTitle(EMBED_TITLE_NO_HISTORY)
+          .setDescription(EMBED_DESC_NO_HISTORY);
+        await interaction.editReply({ embeds: [embed] });
         return;
       }
 
@@ -65,10 +80,11 @@ module.exports = {
       }
 
       // Inform the user that the reset was successful.
-      await interaction.editReply({ 
-        content: '🗑️ Conversation history has been reset for this channel.', 
-        ephemeral: false
-      });
+      const embed = new EmbedBuilder()
+        .setColor(EMBED_COLOR_SUCCESS)
+        .setTitle(EMBED_TITLE_RESET)
+        .setDescription(EMBED_DESC_RESET);
+      await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       // Log and inform the user of any errors that occur during execution.
       logger.error(`Error executing reset command in channel ${channelId}.`, {
@@ -77,10 +93,11 @@ module.exports = {
         message: error.message
       });
       
-      await interaction.editReply({ 
-        content: '⚠️ An error occurred while trying to reset the conversation history.', 
-        ephemeral: true
-      });
+      const embed = new EmbedBuilder()
+        .setColor(EMBED_COLOR_ERROR)
+        .setTitle(EMBED_TITLE_ERROR)
+        .setDescription(EMBED_DESC_ERROR);
+      await interaction.editReply({ embeds: [embed] });
     }
   },
 };
