@@ -30,16 +30,17 @@ function getLogger(label) {
       format.printf(({ timestamp, level, message, label, ...meta }) => {
         // Format the message with any additional arguments
         let formattedMessage = message;
-        if (typeof message === 'string') {
-          const args = meta[0];
-          if (args !== undefined) {
-            if (Array.isArray(args)) {
-              formattedMessage = util.format(message, ...args);
-            } else {
-              formattedMessage = util.format(message, args);
-            }
-            delete meta[0];
-          }
+        const args = [];
+        
+        // Collect all arguments for formatting
+        for (let i = 0; meta[i] !== undefined; i++) {
+          args.push(meta[i]);
+          delete meta[i];
+        }
+
+        // Format the message if we have arguments
+        if (args.length > 0) {
+          formattedMessage = util.format(message, ...args);
         }
 
         // Format the final message

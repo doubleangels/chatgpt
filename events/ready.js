@@ -41,29 +41,29 @@ module.exports = {
    */
   execute(client) {
     try {
-      logger.info(LOG_BOT_ONLINE, [client.user.tag]);
+      logger.info(LOG_BOT_ONLINE, client.user.tag);
 
       client.user.setActivity(BOT_ACTIVITY.name, { type: BOT_ACTIVITY.type });
-      logger.info(LOG_BOT_ACTIVITY, [BOT_ACTIVITY.name]);
+      logger.info(LOG_BOT_ACTIVITY, BOT_ACTIVITY.name);
 
       const guilds = client.guilds.cache;
-      logger.info(LOG_GUILD_COUNT, [guilds.size]);
+      logger.info(LOG_GUILD_COUNT, guilds.size);
 
       guilds.forEach(guild => {
         try {
-          logger.info(LOG_GUILD_INFO, [guild.name, guild.id]);
+          logger.info(LOG_GUILD_INFO, guild.name, guild.id);
 
           const permissions = guild.members.me.permissions.toArray();
-          logger.info(LOG_GUILD_PERMISSIONS, [guild.name, permissions.join(', ')]);
+          logger.info(LOG_GUILD_PERMISSIONS, guild.name, permissions.join(', '));
         } catch (error) {
-          logger.error(LOG_ERROR_GETTING_PERMISSIONS, [guild.name], {
+          logger.error(LOG_ERROR_GETTING_PERMISSIONS, guild.name, {
             error: error.stack,
             message: error.message
           });
         }
       });
     } catch (error) {
-      logger.error(LOG_ERROR_GETTING_GUILDS, [], {
+      logger.error(LOG_ERROR_GETTING_GUILDS, {
         error: error.stack,
         message: error.message
       });
