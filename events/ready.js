@@ -1,8 +1,14 @@
+/**
+ * Ready event handler module for the Discord bot.
+ * Handles bot initialization, activity setup, and guild information logging.
+ * @module events/ready
+ */
+
 const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
-// Log message constants
+// Log message constants for bot status and activity
 const LOG_BOT_ONLINE = 'Bot is online: %s';
 const LOG_BOT_ACTIVITY = 'Bot activity set to: %s';
 const LOG_GUILD_COUNT = 'Bot is in %d guilds';
@@ -10,9 +16,11 @@ const LOG_GUILD_INFO = 'Guild: %s (ID: %s)';
 const LOG_GUILD_PERMISSIONS = 'Permissions in %s: %s';
 const LOG_ERROR_GETTING_GUILDS = 'Error getting guilds:';
 const LOG_ERROR_GETTING_PERMISSIONS = 'Error getting permissions for guild %s:';
+const LOG_INIT_HISTORY = "Initialized conversation history storage.";
+const LOG_SETUP_COMPLETE = "Bot is ready and setup complete.";
 
 /**
- * Bot's activity configuration
+ * Bot's activity configuration for Discord presence
  * @type {Object}
  */
 const BOT_ACTIVITY = {
@@ -20,10 +28,6 @@ const BOT_ACTIVITY = {
   name: 'with ChatGPT'
 };
 
-/**
- * Ready event handler module
- * @module events/ready
- */
 module.exports = {
   name: 'ready',
   once: true,
@@ -67,10 +71,10 @@ module.exports = {
 
     if (!client.conversationHistory) {
       client.conversationHistory = new Map();
-      logger.debug("Initialized conversation history storage.");
+      logger.debug(LOG_INIT_HISTORY);
     }
 
-    logger.info("Bot is ready and setup complete.", {
+    logger.info(LOG_SETUP_COMPLETE, {
       readyTimestamp: new Date().toISOString()
     });
   }
