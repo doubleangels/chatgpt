@@ -6,20 +6,11 @@ const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength } = require('../config');
 const config = require('../config');
 
-// Constants for message handling
-const MAX_MESSAGE_LENGTH = 2000;
-const MESSAGE_TYPE_CHAT = MessageType.ChatInputCommand;
-const MESSAGE_TYPE_CONTEXT_MENU = MessageType.ContextMenuCommand;
-
-// Message type constants
 const MESSAGE_TYPES = {
   DEFAULT: MessageType.Default,
-  REPLY: MessageType.Reply,
-  CHAT_INPUT_COMMAND: MessageType.ChatInputCommand,
-  CONTEXT_MENU_COMMAND: MessageType.ContextMenuCommand
+  REPLY: MessageType.Reply
 };
 
-// Log message constants
 const LOG_MESSAGE_RECEIVED = 'Message received from %s in %s: %s';
 const LOG_PROCESSING_MESSAGE = 'Processing message from %s in %s';
 const LOG_MESSAGE_IGNORED = 'Ignoring message from %s (bot)';
@@ -32,7 +23,6 @@ const LOG_REPLY_SENT = 'Reply sent successfully to %s in %s';
 const LOG_ERROR_PROCESSING = 'Error processing message:';
 const LOG_ERROR_SENDING = 'Error sending reply:';
 
-// Message configuration
 const MESSAGE_CONFIG = {
   maxHistoryLength: 10,
   systemMessage: {
@@ -43,20 +33,12 @@ const MESSAGE_CONFIG = {
 
 module.exports = {
   name: Events.MessageCreate,
-  /**
-   * Executes when a message is created in Discord.
-   * Processes messages that mention the bot or reply to the bot.
-   * 
-   * @param {Message} message - The Discord message object.
-   */
   async execute(message) {
-    // Ignore messages from bots to prevent loops.
     if (message.author.bot) {
       logger.debug(LOG_MESSAGE_IGNORED, message.author.tag);
       return;
     }
 
-    // Ignore non-default message types
     if (message.type !== MESSAGE_TYPES.DEFAULT) {
       logger.debug(LOG_MESSAGE_TYPE_IGNORED, message.type);
       return;
@@ -68,14 +50,11 @@ module.exports = {
     const userId = message.author.id;
     const channelName = message.channel?.name || 'unknown';
 
-    // Check if this is a reply to the bot.
     let isReplyToBot = false;
     let referencedMessage = null;
 
-    // Process message reference (if it's a reply).
     if (message.reference && message.reference.messageId) {
       try {
-        // Fetch the message being replied to.
         referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
         isReplyToBot = referencedMessage.author.id === client.user.id;
 
@@ -91,15 +70,12 @@ module.exports = {
       }
     }
 
-    // Check if the bot should process this message - only respond to mentions or replies.
     const hasBotMention = message.content.includes(botMention);
 
-    // Process only if the bot is mentioned or is a reply to the bot.
     if (!hasBotMention && !isReplyToBot) {
       return;
     }
 
-    // Start typing indicator to show the bot is processing.
     try {
       await message.channel.sendTyping();
     } catch (err) {
@@ -112,10 +88,8 @@ module.exports = {
     logger.info(LOG_MESSAGE_RECEIVED, message.author.tag, channelName, message.content);
     logger.debug(LOG_PROCESSING_MESSAGE, message.author.tag, channelName);
 
-    // Process user message - replace bot mention with a generic name.
     const userText = message.content.replace(botMention, '@ChatGPT').trim();
 
-    // Initialize conversation history for this channel if it doesn't exist.
     if (!client.conversationHistory.has(channelId)) {
       logger.debug(LOG_NO_HISTORY, channelId);
       client.conversationHistory.set(channelId, new Map());
@@ -123,14 +97,11 @@ module.exports = {
     }
 
     const channelHistory = client.conversationHistory.get(channelId);
-    // Initialize user history if it doesn't exist.
     if (!channelHistory.has(userId)) {
       channelHistory.set(userId, [MESSAGE_CONFIG.systemMessage]);
     }
 
-    // Get conversation history for the user.
     const userHistory = channelHistory.get(userId);
-    // Add referenced message to history if replying to bot.
     if (isReplyToBot && referencedMessage) {
       logger.debug(`Adding bot's previous response to conversation history for user ${userId} in channel ${channelId}.`);
       userHistory.push({
@@ -139,14 +110,12 @@ module.exports = {
       });
     }
 
-    // Add user message to history.
     logger.debug(`Adding user message (${message.id}) to conversation history for user ${userId}.`);
     userHistory.push({
       role: 'user',
       content: userText
     });
 
-    // Ensure history doesn't exceed maximum length.
     if (userHistory.length > MESSAGE_CONFIG.maxHistoryLength) {
       logger.debug(`Trimming conversation history for user ${userId} in channel ${channelId} (current: ${userHistory.length}, max: ${MESSAGE_CONFIG.maxHistoryLength}).`);
       userHistory.splice(1, userHistory.length - MESSAGE_CONFIG.maxHistoryLength);
@@ -155,7 +124,6 @@ module.exports = {
     logger.debug(LOG_HISTORY_UPDATED, channelId);
 
     try {
-      // Generate AI response.
       logger.info(`Generating AI response for message ${message.id} from ${message.author.tag}.`);
       const reply = await generateAIResponse(userHistory);
 
@@ -168,7 +136,6 @@ module.exports = {
         return;
       }
 
-      // Split response if needed and send.
       const replyChunks = splitMessage(reply);
       logger.info(`Sending AI response in ${replyChunks.length} chunks for message ${message.id} in channel ${channelId}.`);
 
@@ -177,13 +144,11 @@ module.exports = {
       for (let i = 0; i < replyChunks.length; i++) {
         try {
           if (i === 0) {
-            // First chunk is sent as a reply to maintain context.
             await message.reply({
               content: replyChunks[i],
               ephemeral: false
             });
           } else {
-            // Additional chunks are sent as follow-up messages.
             await message.channel.send({
               content: replyChunks[i],
               ephemeral: false
@@ -199,7 +164,6 @@ module.exports = {
         }
       }
 
-      // Add AI response to history.
       logger.debug(`Adding AI response to conversation history for user ${userId} in channel ${channelId}.`);
       userHistory.push({
         role: 'assistant',
@@ -215,7 +179,6 @@ module.exports = {
         channelId
       });
       
-      // Send error message to user.
       await message.reply({
         content: "⚠️ An error occurred while processing your request.",
         ephemeral: true
