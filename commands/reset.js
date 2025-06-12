@@ -2,20 +2,6 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
-// Embed color constants
-const EMBED_COLOR_SUCCESS = 0x00FF00; // Green
-const EMBED_COLOR_ERROR = 0xFF0000;   // Red
-
-// Embed title constants
-const EMBED_TITLE_NO_HISTORY = '⚠️ No History Found';
-const EMBED_TITLE_RESET = '🗑️ History Reset';
-const EMBED_TITLE_ERROR = '⚠️ Error';
-
-// Embed description constants
-const EMBED_DESC_NO_HISTORY = 'No conversation history found for this channel.';
-const EMBED_DESC_RESET = 'Conversation history has been reset for this channel.';
-const EMBED_DESC_ERROR = 'An error occurred while trying to reset the conversation history.';
-
 /**
  * Reset command module that allows administrators to reset all conversation history in a specific channel.
  * @module commands/reset
@@ -55,9 +41,9 @@ module.exports = {
       if (!client.conversationHistory.has(channelId)) {
         logger.debug(`Reset command failed - no conversation history found for channel ${channelId}.`);
         const embed = new EmbedBuilder()
-          .setColor(EMBED_COLOR_ERROR)
-          .setTitle(EMBED_TITLE_NO_HISTORY)
-          .setDescription(EMBED_DESC_NO_HISTORY);
+          .setColor(0xFF0000)
+          .setTitle('⚠️ No History Found')
+          .setDescription('No conversation history found for this channel.');
         await interaction.editReply({ embeds: [embed] });
         return;
       }
@@ -84,9 +70,9 @@ module.exports = {
       }
 
       const embed = new EmbedBuilder()
-        .setColor(EMBED_COLOR_SUCCESS)
-        .setTitle(EMBED_TITLE_RESET)
-        .setDescription(EMBED_DESC_RESET);
+        .setColor(0x00FF00)
+        .setTitle('🗑️ History Reset')
+        .setDescription('Conversation history has been reset for this channel.');
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       logger.error(`Error executing reset command in channel ${channelId}.`, {
@@ -96,9 +82,9 @@ module.exports = {
       });
       
       const embed = new EmbedBuilder()
-        .setColor(EMBED_COLOR_ERROR)
-        .setTitle(EMBED_TITLE_ERROR)
-        .setDescription(EMBED_DESC_ERROR);
+        .setColor(0xFF0000)
+        .setTitle('⚠️ Error')
+        .setDescription('An error occurred while trying to reset the conversation history.');
       await interaction.editReply({ embeds: [embed] });
     }
   },

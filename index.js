@@ -4,36 +4,16 @@ const path = require('path');
 const logger = require('./logger')(path.basename(__filename));
 const config = require('./config');
 
-/** Directory containing command files */
-const COMMANDS_DIRECTORY = 'commands';
-/** Directory containing event handler files */
-const EVENTS_DIRECTORY = 'events';
-/** File extension for command and event files */
-const FILE_EXTENSION = '.js';
-
-/**
- * Bot's required Discord gateway intents
- * @type {Array<number>}
- */
-const BOT_INTENTS = [
-  GatewayIntentBits.Guilds,
-  GatewayIntentBits.GuildMessages,
-  GatewayIntentBits.MessageContent,
-];
-
-// Error message constants
-const ERROR_MESSAGE_COMMAND = 'There was an error executing that command!';
-const ERROR_MESSAGE_CONTEXT_MENU = 'There was an error executing that command!';
-
-/** Delay in milliseconds before forced process exit */
-const PROCESS_EXIT_DELAY = 1000;
-
 /**
  * Discord client instance with required intents
  * @type {Client}
  */
 const client = new Client({
-  intents: BOT_INTENTS
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ]
 });
 
 // Initialize collections for commands and conversation history
@@ -41,8 +21,8 @@ client.commands = new Collection();
 client.conversationHistory = new Map();
 
 // Load command files
-const commandsPath = path.join(__dirname, COMMANDS_DIRECTORY);
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(FILE_EXTENSION));
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
   try {
@@ -58,8 +38,8 @@ for (const file of commandFiles) {
 }
 
 // Load event handler files
-const eventsPath = path.join(__dirname, EVENTS_DIRECTORY);
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(FILE_EXTENSION));
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
 for (const file of eventFiles) {
   try {
@@ -123,9 +103,9 @@ client.on('interactionCreate', async interaction => {
     });
     try {
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: ERROR_MESSAGE_COMMAND, ephemeral: true });
+        await interaction.followUp({ content: 'There was an error executing that command!', ephemeral: true });
       } else {
-        await interaction.reply({ content: ERROR_MESSAGE_COMMAND, ephemeral: true });
+        await interaction.reply({ content: 'There was an error executing that command!', ephemeral: true });
       }
     } catch (replyError) {
       logger.error('Error sending error response.', {
@@ -164,9 +144,9 @@ client.on('interactionCreate', async interaction => {
 
     try {
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: ERROR_MESSAGE_CONTEXT_MENU, ephemeral: true });
+        await interaction.followUp({ content: 'There was an error executing that command!', ephemeral: true });
       } else {
-        await interaction.reply({ content: ERROR_MESSAGE_CONTEXT_MENU, ephemeral: true });
+        await interaction.reply({ content: 'There was an error executing that command!', ephemeral: true });
       }
     } catch (replyError) {
       logger.error('Error sending error response.', {
@@ -190,7 +170,7 @@ process.on('uncaughtException', (error) => {
     error: error.stack,
     message: error.message
   });
-  setTimeout(() => process.exit(1), PROCESS_EXIT_DELAY);
+  setTimeout(() => process.exit(1), 1000);
 });
 
 process.on('unhandledRejection', (reason, promise) => {

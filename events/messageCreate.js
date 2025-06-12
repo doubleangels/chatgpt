@@ -7,27 +7,6 @@ const { maxHistoryLength } = require('../config');
 const config = require('../config');
 
 /**
- * Message types that the bot will respond to
- * @type {Object}
- */
-const MESSAGE_TYPES = {
-  DEFAULT: MessageType.Default,
-  REPLY: MessageType.Reply
-};
-
-/**
- * Configuration for conversation history and system message
- * @type {Object}
- */
-const MESSAGE_CONFIG = {
-  maxHistoryLength: 10,
-  systemMessage: {
-    role: 'system',
-    content: 'You are a helpful assistant.'
-  }
-};
-
-/**
  * Message create event handler module
  * @module events/messageCreate
  */
@@ -44,11 +23,6 @@ module.exports = {
   async execute(message) {
     if (message.author.bot) {
       logger.debug(`Ignoring bot message from ${message.author.tag}.`);
-      return;
-    }
-
-    if (message.type !== MESSAGE_TYPES.DEFAULT) {
-      logger.debug(`Ignoring message of type: ${message.type}`);
       return;
     }
 
@@ -106,7 +80,14 @@ module.exports = {
 
     const channelHistory = client.conversationHistory.get(channelId);
     if (!channelHistory.has(userId)) {
-      channelHistory.set(userId, [MESSAGE_CONFIG.systemMessage]);
+      channelHistory.set(userId, [{
+        role: 'system',
+        content: `You are a helpful assistant.
+                    The users that you help know that you can 't send messages on their behalf.
+                    Please send responses in a clear and concise manner, using Discord message formatting.
+                    Always limit responses to less than 2000 characters.
+                    Maintain conversation continuity and context.`
+      }]);
     }
 
     const userHistory = channelHistory.get(userId);
@@ -124,9 +105,9 @@ module.exports = {
       content: userText
     });
 
-    if (userHistory.length > MESSAGE_CONFIG.maxHistoryLength) {
-      logger.debug(`Trimming conversation history for user ${userId} in channel ${channelId} (current: ${userHistory.length}, max: ${MESSAGE_CONFIG.maxHistoryLength}).`);
-      userHistory.splice(1, userHistory.length - MESSAGE_CONFIG.maxHistoryLength);
+    if (userHistory.length > 10) {
+      logger.debug(`Trimming conversation history for user ${userId} in channel ${channelId} (current: ${userHistory.length}, max: 10).`);
+      userHistory.splice(1, userHistory.length - 10);
     }
 
     logger.debug(`Updated conversation history for channel ${channelId}`);
@@ -147,21 +128,14 @@ module.exports = {
       const replyChunks = splitMessage(reply);
       logger.info(`Sending AI response in ${replyChunks.length} chunks for message ${message.id} in channel ${channelId}.`);
 
-      logger.info(`Sending reply to ${message.author.tag} in ${channelName}`);
+      logger.info(`Sending reply to ${message.author.tag} in channel: ${channelName}`);
 
       for (let i = 0; i < replyChunks.length; i++) {
         try {
-          if (i === 0) {
-            await message.reply({
-              content: replyChunks[i],
-              ephemeral: false
-            });
-          } else {
-            await message.channel.send({
-              content: replyChunks[i],
-              ephemeral: false
-            });
-          }
+          await message.reply({
+            content: replyChunks[i],
+            ephemeral: false
+          });
         } catch (sendError) {
           logger.error(`Failed to send message chunk ${i + 1} for message ${message.id}.`, {
             error: sendError.stack,
@@ -178,7 +152,7 @@ module.exports = {
         content: reply
       });
 
-      logger.info(`Reply sent successfully to ${message.author.tag} in ${channelName}`);
+      logger.info(`Reply sent successfully to ${message.author.tag} in channel: ${channelName}`);
     } catch (error) {
       logger.error('Error processing message:', {
         error: error.stack,

@@ -12,13 +12,13 @@ const MESSAGE_CONFIG = {
 
 // Log message constants
 const LOG_EMPTY_TEXT = 'Empty text provided to splitMessage, returning empty array.';
-const LOG_WITHIN_LIMIT = 'Text length (%d) is within limit (%d), no splitting needed.';
-const LOG_SPLITTING_MESSAGE = 'Splitting message of %d characters into chunks of max %d characters.';
-const LOG_CHUNK_CREATED = 'Chunk %d created with %d characters.';
-const LOG_LINE_EXCEEDS_LIMIT = 'Line %d exceeds limit (%d chars), splitting line itself.';
-const LOG_CHUNK_FROM_LINE = 'Created chunk %d by splitting long line (%d chars).';
-const LOG_FINAL_CHUNK = 'Final chunk %d created with %d characters.';
-const LOG_SPLIT_COMPLETE = 'Message split into %d chunks.';
+const LOG_WITHIN_LIMIT = 'Text length is within limit, no splitting needed.';
+const LOG_SPLITTING_MESSAGE = 'Splitting message of ${text.length} characters into chunks of max ${limit} characters.';
+const LOG_CHUNK_CREATED = 'Chunk ${chunks.length} created with ${currentChunk.length} characters.';
+const LOG_LINE_EXCEEDS_LIMIT = 'Line ${lineCount} exceeds limit (${line.length} chars), splitting line itself.';
+const LOG_CHUNK_FROM_LINE = 'Created chunk ${chunks.length} by splitting long line (${chunkContent.length} chars).';
+const LOG_FINAL_CHUNK = 'Final chunk ${chunks.length} created with ${currentChunk.length} characters.';
+const LOG_SPLIT_COMPLETE = 'Message split into ${chunks.length} chunks.';
 const LOG_SPLIT_ERROR = 'Error in splitMessage function.';
 
 /**
@@ -26,22 +26,22 @@ const LOG_SPLIT_ERROR = 'Error in splitMessage function.';
  * Attempts to split on newlines when possible, but will split mid-line if necessary.
  * 
  * @param {string} text - The text to split into chunks
- * @param {number} [limit=MESSAGE_CONFIG.defaultLimit] - Maximum length for each chunk
+ * @param {number} [limit=2000] - Maximum length for each chunk
  * @returns {string[]} Array of message chunks
  */
-function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
+function splitMessage(text, limit = 2000) {
   try {
     if (!text) {
-      logger.debug(LOG_EMPTY_TEXT);
+      logger.debug('Empty text provided to splitMessage, returning empty array.');
       return [''];
     }
     
     if (text.length <= limit) {
-      logger.debug(LOG_WITHIN_LIMIT, text.length, limit);
+      logger.debug('Text length is within limit, no splitting needed.');
       return [text];
     }
     
-    logger.debug(LOG_SPLITTING_MESSAGE, text.length, limit);
+    logger.debug(`Splitting message of ${text.length} characters into chunks of max ${limit} characters.`);
     
     const chunks = [];
     const lines = text.split('\n');
@@ -54,15 +54,15 @@ function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
       if (currentChunk.length + line.length + 1 > limit) {
         if (currentChunk) {
           chunks.push(currentChunk);
-          logger.debug(LOG_CHUNK_CREATED, chunks.length, currentChunk.length);
+          logger.debug(`Chunk ${chunks.length} created with ${currentChunk.length} characters.`);
           currentChunk = line;
         } else {
-          logger.debug(LOG_LINE_EXCEEDS_LIMIT, lineCount, line.length);
+          logger.debug(`Line ${lineCount} exceeds limit (${line.length} chars), splitting line itself.`);
           let remainingLine = line;
           while (remainingLine.length > limit) {
             const chunkContent = remainingLine.substring(0, limit);
             chunks.push(chunkContent);
-            logger.debug(LOG_CHUNK_FROM_LINE, chunks.length, chunkContent.length);
+            logger.debug(`Created chunk ${chunks.length} by splitting long line (${chunkContent.length} chars).`);
             remainingLine = remainingLine.substring(limit);
           }
           currentChunk = remainingLine.length > 0 ? remainingLine : '';
@@ -74,10 +74,10 @@ function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
     
     if (currentChunk) {
       chunks.push(currentChunk);
-      logger.debug(LOG_FINAL_CHUNK, chunks.length, currentChunk.length);
+      logger.debug(`Final chunk ${chunks.length} created with ${currentChunk.length} characters.`);
     }
     
-    logger.info(LOG_SPLIT_COMPLETE, chunks.length, {
+    logger.info(`Message split into ${chunks.length} chunks.`, {
       originalLength: text.length,
       chunkCount: chunks.length,
       chunkSizes: chunks.map(chunk => chunk.length),
@@ -86,12 +86,12 @@ function splitMessage(text, limit = MESSAGE_CONFIG.defaultLimit) {
     
     return chunks;
   } catch (error) {
-    logger.error(LOG_SPLIT_ERROR, { 
+    logger.error('Error in splitMessage function.', { 
       error: error.stack,
       message: error.message,
       textLength: text?.length
     });
-    return [MESSAGE_CONFIG.errorMessage];
+    return ['Error splitting message'];
   }
 }
 

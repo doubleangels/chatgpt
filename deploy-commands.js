@@ -4,13 +4,6 @@ const path = require('path');
 const logger = require('./logger')(path.basename(__filename));
 const config = require('./config');
 
-/** Directory containing command files */
-const COMMANDS_DIRECTORY = 'commands';
-/** File extension for command files */
-const COMMAND_FILE_EXTENSION = '.js';
-/** Discord API version to use */
-const DISCORD_API_VERSION = '10';
-
 /**
  * Deploys slash commands to Discord.
  * Loads all command files from the commands directory and registers them with Discord.
@@ -21,9 +14,9 @@ const DISCORD_API_VERSION = '10';
 async function deployCommands() {
   const commands = [];
   
-  const commandsPath = path.join(__dirname, COMMANDS_DIRECTORY);
+  const commandsPath = path.join(__dirname, 'commands');
   
-  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(COMMAND_FILE_EXTENSION));
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
   
   for (const file of commandFiles) {
     const command = require(`./commands/${file}`);
@@ -31,7 +24,7 @@ async function deployCommands() {
     logger.debug(`Loaded command: ${file}`);
   }
   
-  const rest = new REST({ version: DISCORD_API_VERSION }).setToken(config.token);
+  const rest = new REST({ version: '10' }).setToken(config.token);
   
   const clientId = process.env.DISCORD_CLIENT_ID || config.clientId;
   logger.info(`Deploying commands for application ID: ${clientId}`);
