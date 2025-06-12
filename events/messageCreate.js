@@ -43,7 +43,7 @@ module.exports = {
    */
   async execute(message) {
     if (message.author.bot) {
-      logger.debug(`Ignoring message from ${message.author.tag} (bot)`);
+      logger.debug(`Ignoring bot message from ${message.author.tag}.`);
       return;
     }
 

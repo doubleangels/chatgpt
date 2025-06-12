@@ -48,7 +48,7 @@ for (const file of commandFiles) {
   try {
     const command = require(path.join(commandsPath, file));
     client.commands.set(command.data.name, command);
-    logger.info(`Loaded command: ${command.data.name}.`);
+    logger.info(`Loaded command: ${command.data.name}`);
   } catch (error) {
     logger.error(`Error loading command file: ${file}.`, {
       error: error.stack,
@@ -67,7 +67,7 @@ for (const file of eventFiles) {
     if (event.once) {
       client.once(event.name, (...args) => {
         try {
-          logger.debug(`Executing once event: ${event.name}.`);
+          logger.debug(`Executing event: ${event.name}`);
           event.execute(...args, client);
         } catch (error) {
           logger.error(`Error executing once event: ${event.name}.`, {
@@ -79,7 +79,7 @@ for (const file of eventFiles) {
     } else {
       client.on(event.name, (...args) => {
         try {
-          logger.debug(`Executing event: ${event.name}.`);
+          logger.debug(`Executing event: ${event.name}`);
           event.execute(...args, client);
         } catch (error) {
           logger.error(`Error executing event: ${event.name}.`, {
@@ -89,7 +89,7 @@ for (const file of eventFiles) {
         }
       });
     }
-    logger.info(`Loaded event: ${event.name}.`);
+    logger.info(`Loaded event: ${event.name}`);
   } catch (error) {
     logger.error(`Error loading event file: ${file}.`, {
       error: error.stack,
