@@ -1,16 +1,31 @@
-# Use the official Node image based on Alpine Linux
-FROM node:22-alpine
+# Multi-stage build for better optimization
+FROM node:22-alpine AS base
 
-# Set the working directory in the container
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create app user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S discordbot -u 1001
+
+# Set working directory
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy package files first for better layer caching
 COPY package*.json ./
-RUN npm install -g npm@latest
-RUN npm install
 
-# Copy the rest of your application code, including index.js, commands, and utils directories
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application code
 COPY . .
 
-# Define the default command to run your application
+# Change ownership to app user
+RUN chown -R discordbot:nodejs /app
+USER discordbot
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
 CMD ["node", "index.js"]
