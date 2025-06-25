@@ -16,8 +16,6 @@ jobs:
       branch: dev
       default-tag: dev
       cache-scope: chatgpt-dev
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   delete-workflow-runs:
     needs: [build]
