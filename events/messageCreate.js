@@ -30,7 +30,8 @@ module.exports = {
     const botMention = `<@${client.user.id}>`;
     const channelId = message.channelId;
     const userId = message.author.id;
-    const channelName = message.channel?.name || 'unknown';
+    const channelName = message.channel?.name || 'DM';
+    const isDM = message.channel.type === 1; // 1 = DM channel
 
     let isReplyToBot = false;
     let referencedMessage = null;
@@ -54,7 +55,8 @@ module.exports = {
 
     const hasBotMention = message.content.includes(botMention);
 
-    if (!hasBotMention && !isReplyToBot) {
+    // In DMs, respond to all messages. In servers, only respond to mentions or replies
+    if (!isDM && !hasBotMention && !isReplyToBot) {
       return;
     }
 
@@ -70,7 +72,8 @@ module.exports = {
     logger.info(`Message received from ${message.author.tag} in ${channelName}: ${message.content}`);
     logger.debug(`Processing message from ${message.author.tag} in ${channelName}`);
 
-    const userText = message.content.replace(botMention, '@ChatGPT').trim();
+    // In DMs, use the full message content. In servers, remove the bot mention
+    const userText = isDM ? message.content.trim() : message.content.replace(botMention, '@ChatGPT').trim();
 
     if (!client.conversationHistory.has(channelId)) {
       logger.debug(`No conversation history found for channel ${channelId}`);
