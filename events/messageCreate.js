@@ -85,11 +85,7 @@ module.exports = {
     if (!channelHistory.has(userId)) {
       channelHistory.set(userId, [{
         role: 'system',
-        content: `You are a helpful assistant.
-                    The users that you help know that you can 't send messages on their behalf.
-                    Please send responses in a clear and concise manner.
-                    Always limit responses to less than 2000 characters.
-                    Maintain conversation continuity and context.`
+        content: 'You are a helpful assistant. Always keep your responses under 2000 characters to ensure they fit within Discord\'s message length limit.'
       }]);
     }
 
