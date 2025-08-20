@@ -30,8 +30,7 @@ module.exports = {
     const botMention = `<@${client.user.id}>`;
     const channelId = message.channelId;
     const userId = message.author.id;
-    const channelName = message.channel?.name || 'DM';
-    const isDM = message.channel.type === 1; // 1 = DM channel
+    const channelName = message.channel?.name || 'unknown';
 
     let isReplyToBot = false;
     let referencedMessage = null;
@@ -55,8 +54,7 @@ module.exports = {
 
     const hasBotMention = message.content.includes(botMention);
 
-    // In DMs, respond to all messages. In servers, only respond to mentions or replies
-    if (!isDM && !hasBotMention && !isReplyToBot) {
+    if (!hasBotMention && !isReplyToBot) {
       return;
     }
 
@@ -72,10 +70,8 @@ module.exports = {
     logger.info(`Message received from ${message.author.tag} in ${channelName}: ${message.content}`);
     logger.debug(`Processing message from ${message.author.tag} in ${channelName}`);
 
-    // In DMs, use the full message content. In servers, remove the bot mention
-    const userText = isDM ? message.content.trim() : message.content.replace(botMention, '@ChatGPT').trim();
+    const userText = message.content.replace(botMention, '@ChatGPT').trim();
     
-    // Process image attachments if any
     let imageContents = [];
     if (message.attachments && message.attachments.size > 0) {
       if (!supportsVision()) {
@@ -112,7 +108,6 @@ module.exports = {
     const userHistory = channelHistory.get(userId);
     if (isReplyToBot && referencedMessage) {
       logger.debug(`Adding bot's previous response to conversation history for user ${userId} in channel ${channelId}.`);
-      // For bot responses, we only store the text content since images in responses are not supported
       userHistory.push({
         role: 'assistant',
         content: referencedMessage.content
@@ -121,13 +116,10 @@ module.exports = {
 
     logger.debug(`Adding user message (${message.id}) to conversation history for user ${userId}.`);
     
-    // Create message content that can include both text and images
     const messageContent = createMessageContent(userText, imageContents);
     
-    // Add additional guidance for image analysis if images are present
     let finalMessageContent = messageContent;
     if (imageContents.length > 0 && supportsVision()) {
-      // If there's no text, add a prompt for concise analysis
       if (!userText || userText.trim() === '') {
         finalMessageContent = [
           {
@@ -167,19 +159,15 @@ module.exports = {
 
       logger.info(`Sending AI response (${reply.length} chars) for message ${message.id} in channel ${channelId}.`);
 
-      // Split message if it's too long for Discord
       const messageChunks = splitMessage(reply);
       
-      // Send the response(s)
       try {
         if (messageChunks.length === 1) {
-          // Single message
           await message.reply({
             content: messageChunks[0],
             ephemeral: false
           });
         } else {
-          // Multiple messages
           for (const chunk of messageChunks) {
             await message.reply({
               content: chunk,

@@ -6,20 +6,9 @@ const logger = require('../logger')(path.basename(__filename));
  * @type {Object}
  */
 const MESSAGE_CONFIG = {
-  defaultLimit: 2000,  // Discord's maximum message length
+  defaultLimit: 2000,
   errorMessage: 'Error splitting message'
 };
-
-// Log message constants
-const LOG_EMPTY_TEXT = 'Empty text provided to splitMessage, returning empty array.';
-const LOG_WITHIN_LIMIT = 'Text length is within limit, no splitting needed.';
-const LOG_SPLITTING_MESSAGE = 'Splitting message of ${text.length} characters into chunks of max ${limit} characters.';
-const LOG_CHUNK_CREATED = 'Chunk ${chunks.length} created with ${currentChunk.length} characters.';
-const LOG_LINE_EXCEEDS_LIMIT = 'Line ${lineCount} exceeds limit (${line.length} chars), splitting line itself.';
-const LOG_CHUNK_FROM_LINE = 'Created chunk ${chunks.length} by splitting long line (${chunkContent.length} chars).';
-const LOG_FINAL_CHUNK = 'Final chunk ${chunks.length} created with ${currentChunk.length} characters.';
-const LOG_SPLIT_COMPLETE = 'Message split into ${chunks.length} chunks.';
-const LOG_SPLIT_ERROR = 'Error in splitMessage function.';
 
 /**
  * Splits a message into chunks that fit within Discord's message length limit.
@@ -47,23 +36,27 @@ function splitMessage(text, limit = 2000) {
     let remainingText = text;
     
     while (remainingText.length > limit) {
-      // Try to find the best split point within the limit
       let splitPoint = findBestSplitPoint(remainingText, limit);
       
-      // Extract the chunk
       const chunk = remainingText.substring(0, splitPoint).trim();
       chunks.push(chunk);
       
-      // Update remaining text
-      remainingText = remainingText.substring(splitPoint).trim();
+      // Remove the split portion and trim any leading whitespace/newlines
+      remainingText = remainingText.substring(splitPoint);
+      
+      // Remove leading whitespace, newlines, and blank lines from remaining text
+      remainingText = remainingText.replace(/^[\s\n\r]+/, '');
       
       logger.debug(`Chunk ${chunks.length} created with ${chunk.length} characters.`);
     }
     
-    // Add the remaining text as the final chunk
     if (remainingText.length > 0) {
-      chunks.push(remainingText);
-      logger.debug(`Final chunk ${chunks.length} created with ${remainingText.length} characters.`);
+      // Trim the final chunk as well to ensure consistency
+      const finalChunk = remainingText.trim();
+      if (finalChunk.length > 0) {
+        chunks.push(finalChunk);
+        logger.debug(`Final chunk ${chunks.length} created with ${finalChunk.length} characters.`);
+      }
     }
     
     logger.info(`Message split into ${chunks.length} chunks.`, {
@@ -97,24 +90,20 @@ function splitMessage(text, limit = 2000) {
  * @returns {number} The best split point index
  */
 function findBestSplitPoint(text, limit) {
-  // If the text is shorter than the limit, return the full length
   if (text.length <= limit) {
     return text.length;
   }
   
-  // Look for paragraph breaks (double newlines) within the limit
   const paragraphBreak = findLastOccurrence(text, '\n\n', limit);
-  if (paragraphBreak > limit * 0.7) { // Only use if it's not too early
-    return paragraphBreak + 2; // Include the newlines
+  if (paragraphBreak > limit * 0.7) {
+    return paragraphBreak + 2;
   }
   
-  // Look for single newlines within the limit
   const newlineBreak = findLastOccurrence(text, '\n', limit);
-  if (newlineBreak > limit * 0.8) { // Only use if it's not too early
-    return newlineBreak + 1; // Include the newline
+  if (newlineBreak > limit * 0.8) {
+    return newlineBreak + 1;
   }
   
-  // Look for sentence endings within the limit
   const sentenceEndings = ['. ', '! ', '? ', '.\n', '!\n', '?\n'];
   let bestSentenceBreak = -1;
   
@@ -129,13 +118,11 @@ function findBestSplitPoint(text, limit) {
     return bestSentenceBreak;
   }
   
-  // Look for word boundaries (spaces) within the limit
   const wordBreak = findLastOccurrence(text, ' ', limit);
-  if (wordBreak > limit * 0.5) { // Only use if it's not too early
-    return wordBreak + 1; // Include the space
+  if (wordBreak > limit * 0.5) {
+    return wordBreak + 1;
   }
   
-  // Fallback: split at the limit
   return limit;
 }
 

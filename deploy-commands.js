@@ -44,7 +44,6 @@ async function deployCommands() {
 
 module.exports = deployCommands;
 
-// Execute if this file is run directly
 if (require.main === module) {
   deployCommands()
     .then(() => logger.info('Command deployment completed successfully.'))

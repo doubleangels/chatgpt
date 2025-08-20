@@ -13,15 +13,12 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.DirectMessages,
   ]
 });
 
-// Initialize collections for commands and conversation history
 client.commands = new Collection();
 client.conversationHistory = new Map();
 
-// Load command files
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -38,7 +35,6 @@ for (const file of commandFiles) {
   }
 }
 
-// Load event handler files
 const eventsPath = path.join(__dirname, 'events');
 const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
 
@@ -104,9 +100,9 @@ client.on('interactionCreate', async interaction => {
     });
     try {
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.followUp({ content: '⚠️ There was an error executing that command!', ephemeral: true });
       } else {
-        await interaction.reply({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.reply({ content: '⚠️ There was an error executing that command!', ephemeral: true });
       }
     } catch (replyError) {
       logger.error('Error sending error response.', {
@@ -145,9 +141,9 @@ client.on('interactionCreate', async interaction => {
 
     try {
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.followUp({ content: '⚠️ There was an error executing that command!', ephemeral: true });
       } else {
-        await interaction.reply({ content: 'There was an error executing that command!', ephemeral: true });
+        await interaction.reply({ content: '⚠️ There was an error executing that command!', ephemeral: true });
       }
     } catch (replyError) {
       logger.error('Error sending error response.', {

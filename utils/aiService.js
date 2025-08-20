@@ -27,7 +27,6 @@ function getTokenParameterName(model) {
  * @returns {boolean} True if the model supports custom temperature
  */
 function supportsCustomTemperature(model) {
-  // GPT-5 nano and similar models don't support custom temperature
   if (model === 'gpt-5-nano' || model === 'gpt-5-micro') {
     return false;
   }
@@ -73,31 +72,24 @@ async function generateAIResponse(conversation) {
       const tokenParam = getTokenParameterName(modelName);
       const supportsTemp = supportsCustomTemperature(modelName);
       
-      // Check if conversation contains images and add concise response guidance
       let messages = [...conversation];
       if (hasImages(conversation)) {
-        // Add a system message at the end to encourage concise responses for images
         messages.push({
           role: 'system',
           content: 'For image analysis, provide concise, focused responses. Focus on the most important elements and answer the user\'s specific question rather than providing exhaustive details.'
         });
       }
       
-      // Build request parameters
       const requestParams = {
         model: modelName,
         messages: messages
       };
       
-      // Add temperature only if the model supports it
       let temperatureValue = null;
       if (supportsCustomTemperature(modelName)) {
         requestParams.temperature = 0.7;
         temperatureValue = 0.7;
       }
-      
-      // Note: No token limit specified - using model defaults
-      // This allows for longer, more detailed responses
       
       logger.debug(`Sending conversation to OpenAI API using model: ${modelName}.`, {
         messageCount: conversation.length,
@@ -138,7 +130,6 @@ async function generateAIResponse(conversation) {
     const reply = response.choices[0].message.content;
     const finishReason = response.choices[0].finish_reason;
     
-    // Check if the response is empty
     if (!reply || reply.trim() === '') {
       logger.warn('Response is empty.');
       return 'I apologize, but I couldn\'t generate a response. Please try again.';
@@ -206,7 +197,6 @@ async function processImageAttachments(attachments) {
   const imageContents = [];
   
   for (const attachment of attachments) {
-    // Check if the attachment is an image
     const isImage = attachment.contentType && attachment.contentType.startsWith('image/');
     
     if (isImage) {
@@ -244,7 +234,6 @@ async function processImageAttachments(attachments) {
 function createMessageContent(text, imageContents = []) {
   const content = [];
   
-  // Add text content if provided
   if (text && text.trim()) {
     content.push({
       type: 'text',
@@ -252,7 +241,6 @@ function createMessageContent(text, imageContents = []) {
     });
   }
   
-  // Add image contents
   content.push(...imageContents);
   
   return content;
