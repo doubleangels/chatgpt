@@ -23,7 +23,7 @@ const LOG_SPLIT_ERROR = 'Error in splitMessage function.';
 
 /**
  * Splits a message into chunks that fit within Discord's message length limit.
- * Attempts to split on newlines when possible, but will split mid-line if necessary.
+ * Attempts to split at intelligent break points: paragraphs, sentences, then words.
  * 
  * @param {string} text - The text to split into chunks
  * @param {number} [limit=2000] - Maximum length for each chunk
@@ -44,37 +44,26 @@ function splitMessage(text, limit = 2000) {
     logger.debug(`Splitting message of ${text.length} characters into chunks of max ${limit} characters.`);
     
     const chunks = [];
-    const lines = text.split('\n');
-    let currentChunk = '';
-    let lineCount = 0;
+    let remainingText = text;
     
-    for (const line of lines) {
-      lineCount++;
+    while (remainingText.length > limit) {
+      // Try to find the best split point within the limit
+      let splitPoint = findBestSplitPoint(remainingText, limit);
       
-      if (currentChunk.length + line.length + 1 > limit) {
-        if (currentChunk) {
-          chunks.push(currentChunk);
-          logger.debug(`Chunk ${chunks.length} created with ${currentChunk.length} characters.`);
-          currentChunk = line;
-        } else {
-          logger.debug(`Line ${lineCount} exceeds limit (${line.length} chars), splitting line itself.`);
-          let remainingLine = line;
-          while (remainingLine.length > limit) {
-            const chunkContent = remainingLine.substring(0, limit);
-            chunks.push(chunkContent);
-            logger.debug(`Created chunk ${chunks.length} by splitting long line (${chunkContent.length} chars).`);
-            remainingLine = remainingLine.substring(limit);
-          }
-          currentChunk = remainingLine.length > 0 ? remainingLine : '';
-        }
-      } else {
-        currentChunk = currentChunk ? `${currentChunk}\n${line}` : line;
-      }
+      // Extract the chunk
+      const chunk = remainingText.substring(0, splitPoint).trim();
+      chunks.push(chunk);
+      
+      // Update remaining text
+      remainingText = remainingText.substring(splitPoint).trim();
+      
+      logger.debug(`Chunk ${chunks.length} created with ${chunk.length} characters.`);
     }
     
-    if (currentChunk) {
-      chunks.push(currentChunk);
-      logger.debug(`Final chunk ${chunks.length} created with ${currentChunk.length} characters.`);
+    // Add the remaining text as the final chunk
+    if (remainingText.length > 0) {
+      chunks.push(remainingText);
+      logger.debug(`Final chunk ${chunks.length} created with ${remainingText.length} characters.`);
     }
     
     logger.info(`Message split into ${chunks.length} chunks.`, {
@@ -93,6 +82,86 @@ function splitMessage(text, limit = 2000) {
     });
     return ['Error splitting message'];
   }
+}
+
+/**
+ * Finds the best split point within the given limit, prioritizing:
+ * 1. Double newlines (paragraph breaks)
+ * 2. Single newlines
+ * 3. Sentence endings (.!?)
+ * 4. Word boundaries
+ * 5. Fallback to character limit
+ * 
+ * @param {string} text - The text to find a split point in
+ * @param {number} limit - Maximum length for the chunk
+ * @returns {number} The best split point index
+ */
+function findBestSplitPoint(text, limit) {
+  // If the text is shorter than the limit, return the full length
+  if (text.length <= limit) {
+    return text.length;
+  }
+  
+  // Look for paragraph breaks (double newlines) within the limit
+  const paragraphBreak = findLastOccurrence(text, '\n\n', limit);
+  if (paragraphBreak > limit * 0.7) { // Only use if it's not too early
+    return paragraphBreak + 2; // Include the newlines
+  }
+  
+  // Look for single newlines within the limit
+  const newlineBreak = findLastOccurrence(text, '\n', limit);
+  if (newlineBreak > limit * 0.8) { // Only use if it's not too early
+    return newlineBreak + 1; // Include the newline
+  }
+  
+  // Look for sentence endings within the limit
+  const sentenceEndings = ['. ', '! ', '? ', '.\n', '!\n', '?\n'];
+  let bestSentenceBreak = -1;
+  
+  for (const ending of sentenceEndings) {
+    const breakPoint = findLastOccurrence(text, ending, limit);
+    if (breakPoint > bestSentenceBreak && breakPoint > limit * 0.6) {
+      bestSentenceBreak = breakPoint + ending.length;
+    }
+  }
+  
+  if (bestSentenceBreak > 0) {
+    return bestSentenceBreak;
+  }
+  
+  // Look for word boundaries (spaces) within the limit
+  const wordBreak = findLastOccurrence(text, ' ', limit);
+  if (wordBreak > limit * 0.5) { // Only use if it's not too early
+    return wordBreak + 1; // Include the space
+  }
+  
+  // Fallback: split at the limit
+  return limit;
+}
+
+/**
+ * Finds the last occurrence of a substring before a given position
+ * 
+ * @param {string} text - The text to search in
+ * @param {string} searchStr - The string to search for
+ * @param {number} maxPos - Maximum position to search up to
+ * @returns {number} The position of the last occurrence, or -1 if not found
+ */
+function findLastOccurrence(text, searchStr, maxPos) {
+  const searchLength = searchStr.length;
+  let lastPos = -1;
+  let pos = 0;
+  
+  while (pos < maxPos) {
+    const foundPos = text.indexOf(searchStr, pos);
+    if (foundPos === -1 || foundPos >= maxPos) {
+      break;
+    }
+    lastPos = foundPos;
+    pos = foundPos + searchLength;
+  }
+  
+  return lastPos;
 }
 
 module.exports = { splitMessage };

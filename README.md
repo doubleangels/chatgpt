@@ -10,6 +10,8 @@ A lightweight Discord bot powered by ChatGPT and OpenAI, designed to provide int
 ## Features
 
 - **ChatGPT Integration:** Leverage OpenAI's powerful language model for dynamic, context-aware conversations.
+- **Image Analysis:** Analyze and respond to images using vision-capable models like GPT-4o-mini.
+- **Rich Formatting:** Get consistently formatted responses with Discord-friendly markdown.
 - **Easy Deployment:** Containerized with Docker, ensuring quick and hassle-free setup.
 - **Scalable & Resilient:** Automatically restarts on failures to maintain high availability.
 
@@ -32,10 +34,10 @@ services:
     restart: always
     environment:
       - DISCORD_BOT_TOKEN=your_discord_bot_token_here
+      - LOG_LEVEL=info
+      - MAX_HISTORY_LENGTH=10
+      - MODEL_NAME=gpt-4o-mini
       - OPENAI_API_KEY=your_openai_api_key_here
-      - MODEL_NAME=your_desired_model_name_here
-      - MAX_HISTORY_LENGTH=your_desired_max_history_length_here
-      - LOG_LEVEL=your_desired_log_level_here
 
 networks:
   default:
@@ -46,10 +48,81 @@ networks:
 
 Here is a table of all available environment variables:
 
-| Variable             | Description                                                | Required |    Default    | Example                                 |
-| -------------------- | ---------------------------------------------------------- | :------: | :-----------: | --------------------------------------- |
-| `DISCORD_BOT_TOKEN`  | Authentication token for your Discord bot                  |    ✅    |       -       | -                                       |
-| `OPENAI_API_KEY`     | API key for OpenAI services                                |    ✅    |       -       | -                                       |
-| `MODEL_NAME`         | The name of the OpenAI model to use                        |    ❌    | `gpt-4o-mini` | `gpt-4`, `gpt-4-turbo`, `gpt-3.5-turbo` |
-| `MAX_HISTORY_LENGTH` | Maximum number of messages to keep in conversation history |    ❌    |     `10`      | `20`                                    |
-| `LOG_LEVEL`          | Determines the verbosity of logs                           |    ❌    |    `info`     | `error`, `warn`, `info`, `debug`        |
+| Variable             | Description                                                | Required |    Default    | Example                                               |
+| -------------------- | ---------------------------------------------------------- | :------: | :-----------: | ----------------------------------------------------- |
+| `DISCORD_BOT_TOKEN`  | Authentication token for your Discord bot                  |    ✅    |       -       | -                                                     |
+| `LOG_LEVEL`          | Determines the verbosity of logs                           |    ❌    |    `info`     | `error`, `warn`, `info`, `debug`                      |
+| `MAX_HISTORY_LENGTH` | Maximum number of messages to keep in conversation history |    ❌    |     `10`      | `20`                                                  |
+| `MODEL_NAME`         | The name of the OpenAI model to use                        |    ❌    | `gpt-4o-mini` | `gpt-4o-mini`, `gpt-4o`, `gpt-4-vision`, `gpt-5-nano` |
+| `OPENAI_API_KEY`     | API key for OpenAI services                                |    ✅    |       -       | -                                                     |
+
+## Image Support
+
+The bot supports image analysis when using vision-capable models like `gpt-4o-mini`, `gpt-4o`, `gpt-4-vision`, or `gpt-5-nano`. Users can:
+
+- Send images as attachments in Discord messages
+- Ask questions about the images
+- Get descriptions and analysis of visual content
+- Combine text and images in the same message
+
+**Note:** Image support requires a vision-capable model. If using a model without vision support, the bot will inform users that image analysis is not available.
+
+**Model-Specific Notes:**
+
+- **GPT-5 models** (like `gpt-5-nano`): Use `max_completion_tokens` instead of `max_tokens` and may have limited parameter support (e.g., fixed temperature)
+- **GPT-4 models**: Full parameter support including custom temperature values
+
+## Rich Formatting
+
+The bot provides consistently formatted responses with Discord-friendly markdown formatting.
+
+### Features
+
+- **Consistent Formatting**: All responses use proper Discord markdown
+- **Rich Content**: Headers, bold text, italic text, code blocks, and lists
+- **Visual Appeal**: Well-structured and easy-to-read responses
+
+### Markdown Formatting
+
+The bot automatically formats responses using:
+
+- **Headers**: `## Section Title`
+- **Bold**: `**important text**`
+- **Italic**: `*subtle emphasis*`
+- **Code**: `` `inline code` ``
+- **Code Blocks**: ` `language\ncode` `
+- **Lists**: `- bullet points` and `1. numbered lists`
+
+### Example Output
+
+```
+## Math Problem Solution 🧮
+
+**Problem:** Solve 25x + 3 = y
+
+**Step-by-step solution:**
+
+1. **Identify the equation type**
+   This is a linear equation in two variables.
+
+2. **Solve for y**
+```
+
+y = 25x + 3
+
+```
+
+3. **Solve for x**
+```
+
+25x = y - 3
+x = (y - 3)/25
+
+```
+
+**Examples:**
+- When x = 0: y = 3
+- When x = 2: y = 53
+
+*This represents a line with slope 25 and y-intercept 3.*
+```

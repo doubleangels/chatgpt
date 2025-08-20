@@ -1,9 +1,9 @@
 const { Events, MessageType } = require('discord.js');
-const { generateAIResponse } = require('../utils/aiService');
+const { generateAIResponse, processImageAttachments, createMessageContent } = require('../utils/aiService');
 const { splitMessage } = require('../utils/messageUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
-const { maxHistoryLength, modelName } = require('../config');
+const { maxHistoryLength, modelName, supportsVision } = require('../config');
 const config = require('../config');
 
 /**
@@ -74,6 +74,22 @@ module.exports = {
 
     // In DMs, use the full message content. In servers, remove the bot mention
     const userText = isDM ? message.content.trim() : message.content.replace(botMention, '@ChatGPT').trim();
+    
+    // Process image attachments if any
+    let imageContents = [];
+    if (message.attachments && message.attachments.size > 0) {
+      if (!supportsVision()) {
+        logger.warn(`Image attachments detected but current model ${modelName} does not support vision. Images will be ignored.`);
+        await message.reply({
+          content: "⚠️ I received an image, but the current model doesn't support image analysis. Please use a model like gpt-4o-mini or gpt-4o for image support.",
+          ephemeral: true
+        });
+      } else {
+        logger.debug(`Processing ${message.attachments.size} attachment(s) from message ${message.id}`);
+        imageContents = await processImageAttachments(Array.from(message.attachments.values()));
+        logger.info(`Processed ${imageContents.length} image(s) from message ${message.id}`);
+      }
+    }
 
     if (!client.conversationHistory.has(channelId)) {
       logger.debug(`No conversation history found for channel ${channelId}`);
@@ -83,15 +99,20 @@ module.exports = {
 
     const channelHistory = client.conversationHistory.get(channelId);
     if (!channelHistory.has(userId)) {
+      const visionCapability = supportsVision() 
+        ? "You can analyze and respond to both text and images. When users send images, provide a description of the images, including what is pictured."
+        : "You can respond to text messages. Image analysis is not supported by the current model.";
+        
       channelHistory.set(userId, [{
         role: 'system',
-        content: `You are a helpful assistant powered by the ${modelName} model. Always keep your responses under 2000 characters to ensure they fit within Discord's message length limit. You are aware that you are using the ${modelName} model and can reference this when appropriate.`
+        content: `You are a helpful assistant powered by the ${modelName} model. ${visionCapability} You are aware that you are using the ${modelName} model and can reference this when appropriate. Format your responses using Discord markdown: use ## for headers, **bold** for emphasis, *italic* for subtle emphasis, \`code\` for inline code, \`\`\`language\ncode\`\`\` for code blocks, - for bullet points, 1. for numbered lists, and -# for smaller text. Make your responses visually appealing and well-structured, keeping responses under 2000 characters.`
       }]);
     }
 
     const userHistory = channelHistory.get(userId);
     if (isReplyToBot && referencedMessage) {
       logger.debug(`Adding bot's previous response to conversation history for user ${userId} in channel ${channelId}.`);
+      // For bot responses, we only store the text content since images in responses are not supported
       userHistory.push({
         role: 'assistant',
         content: referencedMessage.content
@@ -99,9 +120,28 @@ module.exports = {
     }
 
     logger.debug(`Adding user message (${message.id}) to conversation history for user ${userId}.`);
+    
+    // Create message content that can include both text and images
+    const messageContent = createMessageContent(userText, imageContents);
+    
+    // Add additional guidance for image analysis if images are present
+    let finalMessageContent = messageContent;
+    if (imageContents.length > 0 && supportsVision()) {
+      // If there's no text, add a prompt for concise analysis
+      if (!userText || userText.trim() === '') {
+        finalMessageContent = [
+          {
+            type: 'text',
+            text: 'Please provide a description of this image, including what is pictured.'
+          },
+          ...imageContents
+        ];
+      }
+    }
+    
     userHistory.push({
       role: 'user',
-      content: userText
+      content: finalMessageContent
     });
 
     if (userHistory.length > 10) {
@@ -113,6 +153,7 @@ module.exports = {
 
     try {
       logger.info(`Generating AI response for message ${message.id} from ${message.author.tag}.`);
+      
       const reply = await generateAIResponse(userHistory);
 
       if (!reply) {
@@ -124,25 +165,33 @@ module.exports = {
         return;
       }
 
-      const replyChunks = splitMessage(reply);
-      logger.info(`Sending AI response in ${replyChunks.length} chunks for message ${message.id} in channel ${channelId}.`);
+      logger.info(`Sending AI response (${reply.length} chars) for message ${message.id} in channel ${channelId}.`);
 
-      logger.info(`Sending reply to ${message.author.tag} in channel: ${channelName}`);
-
-      for (let i = 0; i < replyChunks.length; i++) {
-        try {
+      // Split message if it's too long for Discord
+      const messageChunks = splitMessage(reply);
+      
+      // Send the response(s)
+      try {
+        if (messageChunks.length === 1) {
+          // Single message
           await message.reply({
-            content: replyChunks[i],
+            content: messageChunks[0],
             ephemeral: false
           });
-        } catch (sendError) {
-          logger.error(`Failed to send message chunk ${i + 1} for message ${message.id}.`, {
-            error: sendError.stack,
-            chunk: i + 1,
-            totalChunks: replyChunks.length,
-            errorMessage: sendError.message
-          });
+        } else {
+          // Multiple messages
+          for (const chunk of messageChunks) {
+            await message.reply({
+              content: chunk,
+              ephemeral: false
+            });
+          }
         }
+      } catch (sendError) {
+        logger.error(`Failed to send response for message ${message.id}.`, {
+          error: sendError.stack,
+          errorMessage: sendError.message
+        });
       }
 
       logger.debug(`Adding AI response to conversation history for user ${userId} in channel ${channelId}.`);
