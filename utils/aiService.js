@@ -34,7 +34,6 @@ async function generateAIResponse(conversation) {
       response = await openai.chat.completions.create({
         model: modelName,
         messages: conversation,
-        max_completion_tokens: 500,
         temperature: 0.7,
       });
     } catch (apiError) {
