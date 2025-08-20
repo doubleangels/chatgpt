@@ -77,7 +77,7 @@ module.exports = {
       if (!supportsVision()) {
         logger.warn(`Image attachments detected but current model ${modelName} does not support vision. Images will be ignored.`);
         await message.reply({
-          content: "⚠️ I received an image, but the current model doesn't support image analysis. Please use a model like gpt-4o-mini or gpt-4o for image support.",
+          content: "⚠️ I received an image, but the current model doesn't support image analysis. Please use a model that has image support.",
           ephemeral: true
         });
       } else {
@@ -101,7 +101,7 @@ module.exports = {
         
       channelHistory.set(userId, [{
         role: 'system',
-        content: `You are a helpful assistant powered by the ${modelName} model. ${visionCapability} You are aware that you are using the ${modelName} model and can reference this when appropriate. Format your responses using Discord markdown: use ## for headers, **bold** for emphasis, *italic* for subtle emphasis, \`code\` for inline code, \`\`\`language\ncode\`\`\` for code blocks, - for bullet points, 1. for numbered lists, and -# for smaller text. Make your responses visually appealing and well-structured, keeping responses under 2000 characters.`
+        content: `You are a helpful assistant powered by the ${modelName} model. ${visionCapability} You are aware that you are using the ${modelName} model and can reference this when appropriate. Format your responses using Discord markdown: use ## for headers, **bold** for emphasis, *italic* for subtle emphasis, \`code\` for inline code, \`\`\`language\ncode\`\`\` for code blocks, - for bullet points, 1. for numbered lists, and -# for smaller text. Make your responses visually appealing and well-structured, keeping responses under 2000 characters and ensuring that the title of the response is in a correct format and title case.`
       }]);
     }
 
