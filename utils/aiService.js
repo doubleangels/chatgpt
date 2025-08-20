@@ -34,7 +34,6 @@ async function generateAIResponse(conversation) {
       response = await openai.chat.completions.create({
         model: modelName,
         messages: conversation,
-        temperature: 0.7,
       });
     } catch (apiError) {
       logger.error('API request failed.', {
