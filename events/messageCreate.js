@@ -3,7 +3,7 @@ const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage } = require('../utils/messageUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
-const { maxHistoryLength } = require('../config');
+const { maxHistoryLength, modelName } = require('../config');
 const config = require('../config');
 
 /**
@@ -85,7 +85,7 @@ module.exports = {
     if (!channelHistory.has(userId)) {
       channelHistory.set(userId, [{
         role: 'system',
-        content: 'You are a helpful assistant. Always keep your responses under 2000 characters to ensure they fit within Discord\'s message length limit.'
+        content: `You are a helpful assistant powered by the ${modelName} model. Always keep your responses under 2000 characters to ensure they fit within Discord's message length limit. You are aware that you are using the ${modelName} model and can reference this when appropriate.`
       }]);
     }
 

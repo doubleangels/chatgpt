@@ -7,6 +7,7 @@
 const { ActivityType } = require('discord.js');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
+const { modelName } = require('../config');
 
 module.exports = {
   name: 'ready',
@@ -22,6 +23,7 @@ module.exports = {
   execute(client) {
     try {
       logger.info(`Bot is online: ${client.user.tag}`);
+      logger.info(`Using AI model: ${modelName}`);
 
       client.user.setActivity('for pings! 📡', { type: ActivityType.Watching });
       logger.info(`Bot activity set to: for pings! 📡`);
