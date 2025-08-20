@@ -67,11 +67,6 @@ The bot supports image analysis when using vision-capable models like `gpt-4o-mi
 
 **Note:** Image support requires a vision-capable model. If using a model without vision support, the bot will inform users that image analysis is not available.
 
-**Model-Specific Notes:**
-
-- **GPT-5 models** (like `gpt-5-nano`): Use `max_completion_tokens` instead of `max_tokens` and may have limited parameter support (e.g., fixed temperature)
-- **GPT-4 models**: Full parameter support including custom temperature values
-
 ## Rich Formatting
 
 The bot provides consistently formatted responses with Discord-friendly markdown formatting.
@@ -92,37 +87,4 @@ The bot automatically formats responses using:
 - **Code**: `` `inline code` ``
 - **Code Blocks**: ` `language\ncode` `
 - **Lists**: `- bullet points` and `1. numbered lists`
-
-### Example Output
-
-```
-## Math Problem Solution 🧮
-
-**Problem:** Solve 25x + 3 = y
-
-**Step-by-step solution:**
-
-1. **Identify the equation type**
-   This is a linear equation in two variables.
-
-2. **Solve for y**
-```
-
-y = 25x + 3
-
-```
-
-3. **Solve for x**
-```
-
-25x = y - 3
-x = (y - 3)/25
-
-```
-
-**Examples:**
-- When x = 0: y = 3
-- When x = 2: y = 53
-
-*This represents a line with slope 25 and y-intercept 3.*
-```
+- **Smaller Text**: `-# smaller text`
