@@ -134,8 +134,8 @@ The bot supports comprehensive image analysis when using vision-capable models:
 
 ### Multi-Channel Support
 
-- Separate conversation histories for each user in each channel
-- Context preservation across message exchanges
+- Shared conversation history per channel, allowing multiple users to participate
+- Context preservation across message exchanges from all users
 - Automatic history management and cleanup
 
 ### Interaction Methods
@@ -157,21 +157,19 @@ The bot automatically formats responses using Discord markdown:
 
 ## 🔧 Commands
 
-### `/clear`
-
-Clear your personal conversation history for the current channel.
-
 ### `/reset` (Admin Only)
 
-Reset ALL conversation history for the current channel. Requires Administrator permissions.
+Reset conversation history for a specific channel or all channels. Requires Administrator permissions.
+
+- **No channel specified**: Resets conversation history for all channels
+- **Channel specified**: Resets conversation history for the selected channel only
 
 ## 📁 Project Structure
 
 ```
 chatgpt/
 ├── commands/           # Slash command handlers
-│   ├── clear.js       # Clear conversation history
-│   └── reset.js       # Reset all history (admin)
+│   └── reset.js       # Reset conversation history (admin)
 ├── events/            # Discord event handlers
 │   ├── messageCreate.js # Message processing
 │   └── ready.js       # Bot ready event

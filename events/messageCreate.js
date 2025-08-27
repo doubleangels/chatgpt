@@ -15,7 +15,7 @@ module.exports = {
   /**
    * Handles incoming messages and generates AI responses when appropriate.
    * Processes messages that mention the bot or are replies to the bot's messages.
-   * Maintains conversation history for each user in each channel.
+   * Maintains conversation history per channel, allowing multiple users to participate.
    * 
    * @param {import('discord.js').Message} message - The message that triggered the event
    * @returns {Promise<void>}
@@ -87,34 +87,32 @@ module.exports = {
       }
     }
 
+    // Initialize channel history if it doesn't exist
     if (!client.conversationHistory.has(channelId)) {
       logger.debug(`No conversation history found for channel ${channelId}`);
-      client.conversationHistory.set(channelId, new Map());
-      logger.info(`Created new conversation history for channel ${channelId}`);
-    }
-
-    const channelHistory = client.conversationHistory.get(channelId);
-    if (!channelHistory.has(userId)) {
       const visionCapability = supportsVision() 
         ? "You can analyze and respond to both text and images. When users send images, provide a description of the images, including what is pictured."
         : "You can respond to text messages. Image analysis is not supported by the current model.";
         
-      channelHistory.set(userId, [{
+      client.conversationHistory.set(channelId, [{
         role: 'system',
         content: `You are a helpful assistant powered by the ${modelName} model. ${visionCapability} You are aware that you are using the ${modelName} model and can reference this when appropriate. Format your responses using Discord markdown: use ## for headers, **bold** for emphasis, *italic* for subtle emphasis, \`code\` for inline code, \`\`\`language\ncode\`\`\` for code blocks, - for bullet points, 1. for numbered lists, and -# for smaller text. Make your responses visually appealing and well-structured, keeping responses under 2000 characters and ensuring that the title of the response is in a correct format that describes the question asked and is in title case with appropriate punctuation.`
       }]);
+      logger.info(`Created new conversation history for channel ${channelId}`);
     }
 
-    const userHistory = channelHistory.get(userId);
+    const channelHistory = client.conversationHistory.get(channelId);
+    
+    // Add bot's previous response if this is a reply
     if (isReplyToBot && referencedMessage) {
-      logger.debug(`Adding bot's previous response to conversation history for user ${userId} in channel ${channelId}.`);
-      userHistory.push({
+      logger.debug(`Adding bot's previous response to conversation history for channel ${channelId}.`);
+      channelHistory.push({
         role: 'assistant',
         content: referencedMessage.content
       });
     }
 
-    logger.debug(`Adding user message (${message.id}) to conversation history for user ${userId}.`);
+    logger.debug(`Adding user message (${message.id}) from ${message.author.tag} to conversation history for channel ${channelId}.`);
     
     const messageContent = createMessageContent(userText, imageContents);
     
@@ -131,14 +129,19 @@ module.exports = {
       }
     }
     
-    userHistory.push({
+    // Add user message with author information
+    channelHistory.push({
       role: 'user',
-      content: finalMessageContent
+      content: finalMessageContent,
+      author: message.author.tag // Store author info for context
     });
 
-    if (userHistory.length > 10) {
-      logger.debug(`Trimming conversation history for user ${userId} in channel ${channelId} (current: ${userHistory.length}, max: 10).`);
-      userHistory.splice(1, userHistory.length - 10);
+    // Trim history to maintain maxHistoryLength (keeping system message)
+    if (channelHistory.length > maxHistoryLength + 1) { // +1 for system message
+      logger.debug(`Trimming conversation history for channel ${channelId} (current: ${channelHistory.length}, max: ${maxHistoryLength + 1}).`);
+      const systemMessage = channelHistory[0]; // Preserve system message
+      channelHistory.splice(1, channelHistory.length - maxHistoryLength - 1);
+      channelHistory[0] = systemMessage; // Ensure system message stays at index 0
     }
 
     logger.debug(`Updated conversation history for channel ${channelId}`);
@@ -146,7 +149,7 @@ module.exports = {
     try {
       logger.info(`Generating AI response for message ${message.id} from ${message.author.tag}.`);
       
-      const reply = await generateAIResponse(userHistory);
+      const reply = await generateAIResponse(channelHistory);
 
       if (!reply) {
         logger.warn('No reply generated from AI service.');
@@ -182,8 +185,8 @@ module.exports = {
         });
       }
 
-      logger.debug(`Adding AI response to conversation history for user ${userId} in channel ${channelId}.`);
-      userHistory.push({
+      logger.debug(`Adding AI response to conversation history for channel ${channelId}.`);
+      channelHistory.push({
         role: 'assistant',
         content: reply
       });

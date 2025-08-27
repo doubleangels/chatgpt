@@ -1,9 +1,9 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js'); 
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ChannelType } = require('discord.js'); 
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
 /**
- * Reset command module that allows administrators to reset all conversation history in a specific channel.
+ * Reset command module that allows administrators to reset conversation history.
  * @module commands/reset
  */
 module.exports = {
@@ -14,12 +14,19 @@ module.exports = {
    */
   data: new SlashCommandBuilder()
     .setName('reset')
-    .setDescription('Reset ALL conversation history for this channel.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDescription('Reset conversation history for a specific channel or all channels.')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addChannelOption(option =>
+      option
+        .setName('channel')
+        .setDescription('What channel would you like to reset history for?')
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(false)
+    ),
     
   /**
    * Executes the reset command.
-   * Resets all conversation history in the current channel while preserving the system message if it exists.
+   * Resets conversation history for a specific channel or all channels.
    * 
    * @param {import('discord.js').CommandInteraction} interaction - The interaction object
    * @returns {Promise<void>}
@@ -27,55 +34,79 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const client = interaction.client;
-    const channelId = interaction.channelId;
     const userId = interaction.user.id;
-    const channelName = interaction.channel?.name || 'unknown';
+    const guildName = interaction.guild?.name || 'unknown';
 
-    logger.info(`Reset command initiated by ${interaction.user.tag} in channel ${channelName}.`, {
+    logger.info(`Reset command initiated by ${interaction.user.tag} in guild ${guildName}.`, {
       userId,
-      channelId,
       guildId: interaction.guildId
     });
 
     try {
-      if (!client.conversationHistory.has(channelId)) {
-        logger.debug(`Reset command failed - no conversation history found for channel ${channelId}.`);
-        const embed = new EmbedBuilder()
-          .setColor(0xFF0000)
-          .setTitle('⚠️ No History Found')
-          .setDescription('No conversation history found for this channel.');
-        await interaction.editReply({ embeds: [embed] });
-        return;
-      }
-
-      const userHistoryMap = client.conversationHistory.get(channelId);
-
-      const currentLength = userHistoryMap.size;
-
-      const systemMessage = userHistoryMap.get('system');
-
-      if (systemMessage) {
-        userHistoryMap.clear();
-        userHistoryMap.set('system', systemMessage);
+      const targetChannel = interaction.options.getChannel('channel');
+      
+      if (targetChannel) {
+        // Reset specific channel
+        const channelId = targetChannel.id;
+        const channelName = targetChannel.name;
         
-        logger.info(`Conversation history reset in channel ${channelId} - preserved system message.`, {
-          previousLength: currentLength,
-          newLength: 1
-        });
-      } else {
+        if (!client.conversationHistory.has(channelId)) {
+          logger.debug(`Reset command failed - no conversation history found for channel ${channelId}.`);
+          const embed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('⚠️ No History Found')
+            .setDescription(`No conversation history found for channel #${channelName}.`);
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+
+        const channelHistory = client.conversationHistory.get(channelId);
+        const currentLength = channelHistory.length;
+
+        // Delete the specific channel history
         client.conversationHistory.delete(channelId);
-        logger.info(`Conversation history completely deleted for channel ${channelId}.`, {
+        
+        logger.info(`Conversation history deleted for channel ${channelId} (#${channelName}).`, {
           previousLength: currentLength
         });
-      }
 
-      const embed = new EmbedBuilder()
-        .setColor(0x00FF00)
-        .setTitle('🗑️ History Reset')
-        .setDescription('Conversation history has been reset for this channel.');
-      await interaction.editReply({ embeds: [embed] });
+        const embed = new EmbedBuilder()
+          .setColor(0x00FF00)
+          .setTitle('🗑️ Channel History Reset')
+          .setDescription(`Conversation history has been reset for channel #${channelName}.`);
+        await interaction.editReply({ embeds: [embed] });
+      } else {
+        // Reset all channels
+        const totalChannels = client.conversationHistory.size;
+        const totalMessages = Array.from(client.conversationHistory.values())
+          .reduce((total, history) => total + history.length, 0);
+
+        if (totalChannels === 0) {
+          logger.debug(`Reset command failed - no conversation history found in any channel.`);
+          const embed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('⚠️ No History Found')
+            .setDescription('No conversation history found in any channel.');
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+
+        // Clear all conversation history
+        client.conversationHistory.clear();
+        
+        logger.info(`All conversation history cleared across ${totalChannels} channels.`, {
+          totalChannels,
+          totalMessages
+        });
+
+        const embed = new EmbedBuilder()
+          .setColor(0x00FF00)
+          .setTitle('🗑️ All History Reset')
+          .setDescription(`Conversation history has been reset for all channels (${totalChannels} channels cleared).`);
+        await interaction.editReply({ embeds: [embed] });
+      }
     } catch (error) {
-      logger.error(`Error executing reset command in channel ${channelId}.`, {
+      logger.error(`Error executing reset command.`, {
         error: error.stack,
         userId,
         message: error.message
