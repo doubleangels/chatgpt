@@ -1,6 +1,6 @@
 const { Events, MessageType } = require('discord.js');
-const { generateAIResponse, processImageAttachments, createMessageContent } = require('../utils/aiService');
-const { splitMessage } = require('../utils/messageUtils');
+const { generateAIResponse } = require('../utils/aiService');
+const { splitMessage, processImageAttachments, createMessageContent, trimConversationHistory, createSystemMessage, SYSTEM_MESSAGES } = require('../utils/aiUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { maxHistoryLength, modelName, supportsVision } = require('../config');
@@ -58,10 +58,15 @@ module.exports = {
       return;
     }
 
+    // Send initial "Thinking..." message
+    let thinkingMessage;
     try {
-      await message.channel.sendTyping();
+      thinkingMessage = await message.reply({
+        content: "*Thinking...*",
+        ephemeral: false
+      });
     } catch (err) {
-      logger.warn(`Failed to send typing indicator in channel ${channelId}.`, {
+      logger.warn(`Failed to send thinking message in channel ${channelId}.`, {
         errorMessage: err.message,
         channelId
       });
@@ -89,16 +94,10 @@ module.exports = {
 
     // Initialize channel history if it doesn't exist
     if (!client.conversationHistory.has(channelId)) {
-      logger.debug(`No conversation history found for channel ${channelId}`);
-      const visionCapability = supportsVision() 
-        ? "You can analyze and respond to both text and images. When users send images, provide a description of the images, including what is pictured."
-        : "You can respond to text messages. Image analysis is not supported by the current model.";
-        
-      client.conversationHistory.set(channelId, [{
-        role: 'system',
-        content: `You are a helpful assistant powered by the ${modelName} model. ${visionCapability} You are aware that you are using the ${modelName} model and can reference this when appropriate. Format your responses using Discord markdown: use ## for headers, **bold** for emphasis, *italic* for subtle emphasis, \`code\` for inline code, \`\`\`language\ncode\`\`\` for code blocks, - for bullet points, 1. for numbered lists, and -# for smaller text. Make your responses visually appealing and well-structured, keeping responses under 2000 characters and ensuring that the title of the response is in a correct format that describes the question asked and is in title case with appropriate punctuation.`
-      }]);
-      logger.info(`Created new conversation history for channel ${channelId}`);
+      logger.debug(`No conversation history found for channel ${channelId}.`);
+      const systemMessage = createSystemMessage(modelName, supportsVision());
+      client.conversationHistory.set(channelId, [systemMessage]);
+      logger.info(`Created new conversation history for channel ${channelId}.`);
     }
 
     const channelHistory = client.conversationHistory.get(channelId);
@@ -121,28 +120,22 @@ module.exports = {
       if (!userText || userText.trim() === '') {
         finalMessageContent = [
           {
-            type: 'text',
-            text: 'Please provide a description of this image, including what is pictured.'
+            type: 'input_text',
+            text: SYSTEM_MESSAGES.IMAGE_DESCRIPTION_PROMPT
           },
           ...imageContents
         ];
       }
     }
     
-    // Add user message with author information
+    // Add user message
     channelHistory.push({
       role: 'user',
-      content: finalMessageContent,
-      author: message.author.tag // Store author info for context
+      content: finalMessageContent
     });
 
     // Trim history to maintain maxHistoryLength (keeping system message)
-    if (channelHistory.length > maxHistoryLength + 1) { // +1 for system message
-      logger.debug(`Trimming conversation history for channel ${channelId} (current: ${channelHistory.length}, max: ${maxHistoryLength + 1}).`);
-      const systemMessage = channelHistory[0]; // Preserve system message
-      channelHistory.splice(1, channelHistory.length - maxHistoryLength - 1);
-      channelHistory[0] = systemMessage; // Ensure system message stays at index 0
-    }
+    trimConversationHistory(channelHistory, maxHistoryLength);
 
     logger.debug(`Updated conversation history for channel ${channelId}`);
 
@@ -153,10 +146,16 @@ module.exports = {
 
       if (!reply) {
         logger.warn('No reply generated from AI service.');
-        await message.reply({
-          content: "⚠️ I couldn't generate a response.",
-          ephemeral: true
-        });
+        if (thinkingMessage) {
+          await thinkingMessage.edit({
+            content: "⚠️ I couldn't generate a response."
+          });
+        } else {
+          await message.reply({
+            content: "⚠️ I couldn't generate a response.",
+            ephemeral: true
+          });
+        }
         return;
       }
 
@@ -166,14 +165,30 @@ module.exports = {
       
       try {
         if (messageChunks.length === 1) {
-          await message.reply({
-            content: messageChunks[0],
-            ephemeral: false
-          });
-        } else {
-          for (const chunk of messageChunks) {
+          // Edit the thinking message with the response
+          if (thinkingMessage) {
+            await thinkingMessage.edit({
+              content: messageChunks[0]
+            });
+          } else {
+            // Fallback to reply if thinking message failed
             await message.reply({
-              content: chunk,
+              content: messageChunks[0],
+              ephemeral: false
+            });
+          }
+        } else {
+          // For multiple chunks, edit the first chunk into the thinking message
+          if (thinkingMessage) {
+            await thinkingMessage.edit({
+              content: messageChunks[0]
+            });
+          }
+          
+          // Send remaining chunks as new messages
+          for (let i = 1; i < messageChunks.length; i++) {
+            await message.reply({
+              content: messageChunks[i],
               ephemeral: false
             });
           }
@@ -200,10 +215,16 @@ module.exports = {
         channelId
       });
       
-      await message.reply({
-        content: "⚠️ An error occurred while processing your request.",
-        ephemeral: true
-      });
+      if (thinkingMessage) {
+        await thinkingMessage.edit({
+          content: "⚠️ An error occurred while processing your request."
+        });
+      } else {
+        await message.reply({
+          content: "⚠️ An error occurred while processing your request.",
+          ephemeral: true
+        });
+      }
     }
   },
 };

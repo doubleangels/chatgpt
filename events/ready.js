@@ -10,7 +10,7 @@ const logger = require('../logger')(path.basename(__filename));
 const { modelName } = require('../config');
 
 module.exports = {
-  name: 'ready',
+  name: 'clientReady',
   once: true,
   /**
    * Handles the ready event when the bot starts up.

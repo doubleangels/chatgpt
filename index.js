@@ -75,7 +75,7 @@ for (const file of eventFiles) {
   }
 }
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   logger.info(`Bot is online: ${client.user.tag}`);
 });
 
