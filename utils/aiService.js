@@ -1,5 +1,5 @@
 const { OpenAI } = require('openai');
-const { openaiApiKey, modelName } = require('../config');
+const { openaiApiKey, modelName, getTemperature } = require('../config');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { hasImages, SYSTEM_MESSAGES } = require('./aiUtils');
@@ -20,15 +20,12 @@ function getTokenParameterName(model) {
 
 /**
  * Determines if the model supports custom temperature values.
- * Some models like gpt-5-nano only support the default temperature value.
+ * All models support custom temperature in the Responses API.
  * 
  * @param {string} model - The model name
  * @returns {boolean} True if the model supports custom temperature
  */
 function supportsCustomTemperature(model) {
-  if (model === 'gpt-5-nano' || model === 'gpt-5-micro') {
-    return false;
-  }
   return true;
 }
 
@@ -73,8 +70,9 @@ async function generateAIResponse(conversation) {
       
       let temperatureValue = null;
       if (supportsCustomTemperature(modelName)) {
-        requestParams.temperature = 0.7;
-        temperatureValue = 0.7;
+        const temperature = getTemperature();
+        requestParams.temperature = temperature;
+        temperatureValue = temperature;
       }
       
       logger.debug(`Sending conversation to OpenAI API using model: ${modelName}.`, {

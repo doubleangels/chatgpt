@@ -234,9 +234,7 @@ async function processImageAttachments(attachments) {
         
         imageContents.push({
           type: 'input_image',
-          image_url: {
-            url: base64Image
-          }
+          image_url: base64Image
         });
         
         logger.debug(`Successfully processed image: ${attachment.filename}`);

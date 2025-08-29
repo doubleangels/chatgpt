@@ -25,7 +25,16 @@ function supportsVision() {
          config.modelName.startsWith('gpt-5');
 }
 
+/**
+ * Gets the temperature setting for the current model.
+ * @returns {number} Temperature value (0.7 for most models, 1.0 for GPT-5 models)
+ */
+function getTemperature() {
+  return config.modelName.startsWith('gpt-5') ? 1.0 : 0.7;
+}
+
 module.exports = {
   ...config,
-  supportsVision
+  supportsVision,
+  getTemperature
 };
