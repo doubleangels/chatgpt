@@ -46,7 +46,6 @@ module.exports = {
       const targetChannel = interaction.options.getChannel('channel');
       
       if (targetChannel) {
-        // Reset specific channel
         const channelId = targetChannel.id;
         const channelName = targetChannel.name;
         
@@ -63,7 +62,6 @@ module.exports = {
         const channelHistory = client.conversationHistory.get(channelId);
         const currentLength = channelHistory.length;
 
-        // Delete the specific channel history
         client.conversationHistory.delete(channelId);
         
         logger.info(`Conversation history deleted for channel ${channelId} (#${channelName}).`, {
@@ -76,7 +74,6 @@ module.exports = {
           .setDescription(`Conversation history has been reset for channel #${channelName}.`);
         await interaction.editReply({ embeds: [embed] });
       } else {
-        // Reset all channels
         const totalChannels = client.conversationHistory.size;
         const totalMessages = Array.from(client.conversationHistory.values())
           .reduce((total, history) => total + history.length, 0);
@@ -91,7 +88,6 @@ module.exports = {
           return;
         }
 
-        // Clear all conversation history
         client.conversationHistory.clear();
         
         logger.info(`All conversation history cleared across ${totalChannels} channels.`, {

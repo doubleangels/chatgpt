@@ -58,7 +58,6 @@ module.exports = {
       return;
     }
 
-    // Send initial "Thinking..." message
     let thinkingMessage;
     try {
       thinkingMessage = await message.reply({
@@ -92,7 +91,6 @@ module.exports = {
       }
     }
 
-    // Initialize channel history if it doesn't exist
     if (!client.conversationHistory.has(channelId)) {
       logger.debug(`No conversation history found for channel ${channelId}.`);
       const systemMessage = createSystemMessage(modelName, supportsVision());
@@ -102,7 +100,6 @@ module.exports = {
 
     const channelHistory = client.conversationHistory.get(channelId);
     
-    // Add bot's previous response if this is a reply
     if (isReplyToBot && referencedMessage) {
       logger.debug(`Adding bot's previous response to conversation history for channel ${channelId}.`);
       channelHistory.push({
@@ -128,13 +125,11 @@ module.exports = {
       }
     }
     
-    // Add user message
     channelHistory.push({
       role: 'user',
       content: finalMessageContent
     });
 
-    // Trim history to maintain maxHistoryLength (keeping system message)
     trimConversationHistory(channelHistory, maxHistoryLength);
 
     logger.debug(`Updated conversation history for channel ${channelId}`);
@@ -165,27 +160,23 @@ module.exports = {
       
       try {
         if (messageChunks.length === 1) {
-          // Edit the thinking message with the response
           if (thinkingMessage) {
             await thinkingMessage.edit({
               content: messageChunks[0]
             });
           } else {
-            // Fallback to reply if thinking message failed
             await message.reply({
               content: messageChunks[0],
               ephemeral: false
             });
           }
         } else {
-          // For multiple chunks, edit the first chunk into the thinking message
           if (thinkingMessage) {
             await thinkingMessage.edit({
               content: messageChunks[0]
             });
           }
           
-          // Send remaining chunks as new messages
           for (let i = 1; i < messageChunks.length; i++) {
             await message.reply({
               content: messageChunks[i],

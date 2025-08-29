@@ -112,7 +112,6 @@ async function generateAIResponse(conversation) {
       return '';
     }
 
-    // For Responses API, the response text is directly in output_text
     const reply = response.output_text || '';
     
     if (!reply || reply.trim() === '') {
