@@ -19,8 +19,8 @@
     "homepage": "https://github.com/doubleangels/chatgpt#readme",
     "dependencies": {
         "discord.js": "^14.22.1",
-        "dotenv": "^17.2.1",
-        "openai": "^5.16.0",
+        "dotenv": "^17.2.2",
+        "openai": "^5.18.1",
         "winston": "^3.17.0"
     },
     "devDependencies": {
