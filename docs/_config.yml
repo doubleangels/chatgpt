@@ -1,0 +1,25 @@
+# GitHub Pages configuration for this repo's documentation site
+
+title: ChatGPT Discord Bot
+description: Documentation for setup, configuration, and usage
+theme: jekyll-theme-cayman
+
+# Set baseurl if your repo is not served from the root domain
+# For organization/user pages, leave baseurl empty
+baseurl: ""
+
+markdown: kramdown
+exclude:
+  - node_modules
+  - vendor
+
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: default
+
+github:
+  is_project_page: true
+

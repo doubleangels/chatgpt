@@ -1,3 +1,18 @@
+# Exclude development and documentation assets from Docker build context
+docs/
+.git/
+.github/
+.env
+node_modules/
+npm-debug.log
+Dockerfile
+docker-compose.yml
+README.md
+LICENSE
+*.md
+*.log
+.DS_Store
+Thumbs.db
 # Dependencies
 node_modules
 npm-debug.log*

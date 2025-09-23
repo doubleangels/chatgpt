@@ -7,6 +7,8 @@
 
 A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provide intelligent conversational capabilities with image analysis support right within your Discord server.
 
+> Documentation: See the GitHub Pages site under `docs/` (serve via GitHub Pages) or browse locally at `docs/index.md`.
+
 ## ✨ Features
 
 - **🤖 AI-Powered Conversations**: Leverage OpenAI's latest language models (GPT-4o-mini, GPT-4o, GPT-5-nano, etc.) for dynamic, context-aware conversations
