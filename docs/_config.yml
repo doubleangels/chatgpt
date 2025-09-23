@@ -4,9 +4,9 @@ title: ChatGPT Discord Bot
 description: Documentation for setup, configuration, and usage
 theme: jekyll-theme-cayman
 
-# Set baseurl if your repo is not served from the root domain
-# For organization/user pages, leave baseurl empty
-baseurl: ""
+# Site URL and base path for GitHub Pages
+url: "https://doubleangels.github.com"
+baseurl: "/chatgpt"
 
 markdown: kramdown
 exclude:

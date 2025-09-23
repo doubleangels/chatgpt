@@ -7,7 +7,30 @@
 
 A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provide intelligent conversational capabilities with image analysis support right within your Discord server.
 
-> Documentation: See the GitHub Pages site under `docs/` (serve via GitHub Pages) or browse locally at `docs/index.md`.
+> Documentation: https://doubleangels.github.com/chatgpt/
+
+### Local docs preview (MkDocs Material via git)
+
+This repo uses MkDocs Material as a submodule per the "with git" approach [@https://squidfunk.github.io/mkdocs-material/getting-started/#with-git].
+
+1. Initialize submodules:
+
+```bash
+git submodule update --init --recursive
+```
+
+2. Serve docs locally (requires Python and mkdocs):
+
+```bash
+pip install mkdocs
+mkdocs serve
+```
+
+3. Build docs:
+
+```bash
+mkdocs build
+```
 
 ## ✨ Features
 

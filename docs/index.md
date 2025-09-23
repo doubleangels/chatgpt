@@ -18,14 +18,15 @@ Use the sidebar or the links below to navigate.
 
 Follow the README for a fast start, or see the detailed pages here for more guidance.
 
-- [Quick Start](./quick-start.md)
-- [Configuration](./configuration.md)
-- [Docker Deployment](./docker.md)
-- [Commands](./commands.md)
-- [Troubleshooting](./troubleshooting.md)
+- [Quick Start](quick-start.md)
+- [Configuration](configuration.md)
+- [Docker Deployment](docker.md)
+- [Commands](commands.md)
+- [Troubleshooting](troubleshooting.md)
 
 ## Links
 
 - Repository: https://github.com/doubleangels/chatgpt
 - Issues: https://github.com/doubleangels/chatgpt/issues
+- Docs: https://doubleangels.github.com/chatgpt/
 

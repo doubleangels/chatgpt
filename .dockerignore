@@ -1,5 +1,7 @@
 # Exclude development and documentation assets from Docker build context
 docs/
+mkdocs.yml
+mkdocs-material/
 .git/
 .github/
 .env
