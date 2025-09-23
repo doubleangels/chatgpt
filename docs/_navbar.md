@@ -1,0 +1,13 @@
+- [Home](/)
+- Guides
+  - [Getting Started](/#/guides/getting-started)
+  - [Configuration](/#/guides/configuration)
+  - [Commands](/#/guides/commands)
+- API
+  - [index.js](/#/api/index)
+  - [config.js](/#/api/config)
+  - [deploy-commands.js](/#/api/deploy-commands)
+  - [utils/aiService.js](/#/api/utils-aiService)
+  - [utils/aiUtils.js](/#/api/utils-aiUtils)
+- [GitHub](https://github.com/doubleangels/chatgpt)
+

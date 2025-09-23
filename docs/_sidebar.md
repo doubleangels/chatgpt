@@ -1,5 +1,8 @@
-- Getting Started
+- Guides
   - [Overview](README.md)
+  - [Getting Started](guides/getting-started.md)
+  - [Configuration](guides/configuration.md)
+  - [Commands](guides/commands.md)
 - API Reference
   - [index.js](api/index.md)
   - [config.js](api/config.md)

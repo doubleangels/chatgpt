@@ -23,15 +23,13 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
 - **⚡ Auto-Restart**: Automatic restart on failures with proper error handling
 - **🔒 Secure**: Non-root container execution with proper user permissions
 
-## 🚀 Quick Start
+## 🚀 Deployment (Docker only)
 
 ### Prerequisites
 
-- [Discord Bot Token](https://discord.com/developers/applications) - Create a new application and bot
-- [OpenAI API Key](https://platform.openai.com/overview) - Get your API key from OpenAI
-- Docker and Docker Compose (for containerized deployment)
-
-### Docker Deployment (Recommended)
+- [Discord Bot Token](https://discord.com/developers/applications) – Create a new application and bot
+- [OpenAI API Key](https://platform.openai.com/overview) – Get your API key from OpenAI
+- Docker and Docker Compose
 
 1. **Create a `docker-compose.yml` file:**
 

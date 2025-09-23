@@ -4,28 +4,32 @@
 
 - Discord bot token and application client ID
 - OpenAI API key
-- Node.js 20+ and npm
+- Docker (and optionally Docker Compose)
 
-## Setup
+## Deploy with Docker (recommended)
 
-```bash
-git clone https://github.com/doubleangels/chatgpt.git
-cd chatgpt
-npm install
+Create a `docker-compose.yml`:
+
+```yaml
+version: "3.8"
+services:
+  chatgpt:
+    image: ghcr.io/doubleangels/chatgpt:latest
+    container_name: chatgpt-discord-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_BOT_TOKEN=your_discord_bot_token_here
+      - DISCORD_CLIENT_ID=your_discord_client_id_here
+      - OPENAI_API_KEY=your_openai_api_key_here
+      - MODEL_NAME=gpt-4o-mini
+      - MAX_HISTORY_LENGTH=10
+      - LOG_LEVEL=info
 ```
 
-Create a `.env` file and fill in required values.
-
-## Deploy slash commands
+Start the service:
 
 ```bash
-npm run deploy
+docker compose up -d
 ```
 
-## Run the bot
-
-```bash
-npm start
-```
-
-Invite the bot to your server and mention it or reply to it to start chatting.
+That’s it. The container will run the bot and reconnect if it restarts.

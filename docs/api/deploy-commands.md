@@ -9,9 +9,21 @@ Registers slash commands from the `commands/` directory with Discord.
 ## Behavior
 
 - Reads all `.js` files in `commands/`, converts `data` to JSON and registers via REST `Routes.applicationCommands(clientId)`.
-- Uses `DISCORD_CLIENT_ID` or `config.clientId`.
-- Logs progress and errors via `logger`.
+- Uses `DISCORD_CLIENT_ID` (env) or `config.clientId`.
+- Logs progress (loaded files, application ID) and errors with stack.
+- Throws on failure so CI can fail fast.
 
-## CLI
+## Example
 
-When executed directly (`node deploy-commands.js`), runs deployment and exits non-zero on failure.
+```bash
+node deploy-commands.js
+```
+
+```js
+const deploy = require('./deploy-commands');
+await deploy();
+```
+
+## Notes
+
+- Requires a valid bot token in environment (via `config.token`).
