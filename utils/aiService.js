@@ -1,3 +1,7 @@
+/**
+ * AI service responsible for calling OpenAI's API and returning responses.
+ * @module utils/aiService
+ */
 const { OpenAI } = require('openai');
 const { openaiApiKey, modelName, getTemperature } = require('../config');
 const path = require('path');
@@ -10,6 +14,11 @@ const { hasImages, SYSTEM_MESSAGES } = require('./aiUtils');
  * 
  * @param {string} model - The model name
  * @returns {string} The correct parameter name
+ */
+/**
+ * Returns the correct token parameter name for a given model.
+ * @param {string} model
+ * @returns {"max_completion_tokens"|"max_tokens"}
  */
 function getTokenParameterName(model) {
   if (model.startsWith('gpt-5')) {
@@ -25,6 +34,11 @@ function getTokenParameterName(model) {
  * @param {string} model - The model name
  * @returns {boolean} True if the model supports custom temperature
  */
+/**
+ * Indicates whether the given model supports custom temperature.
+ * @param {string} model
+ * @returns {boolean}
+ */
 function supportsCustomTemperature(model) {
   return true;
 }
@@ -33,6 +47,7 @@ function supportsCustomTemperature(model) {
  * OpenAI client instance configured with API key
  * @type {OpenAI}
  */
+/** @type {OpenAI} */
 const openai = new OpenAI({
   apiKey: openaiApiKey
 });
@@ -44,6 +59,11 @@ const openai = new OpenAI({
  * 
  * @param {Array<{role: string, content: string|Array}>} conversation - Array of conversation messages
  * @returns {Promise<string>} The generated AI response, or empty string if generation fails
+ */
+/**
+ * Generates a reply from OpenAI for the provided conversation history.
+ * @param {Array<{role: string, content: string|Array}>} conversation
+ * @returns {Promise<string>}
  */
 async function generateAIResponse(conversation) {
   if (!conversation || conversation.length === 0) {

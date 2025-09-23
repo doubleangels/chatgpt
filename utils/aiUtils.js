@@ -1,3 +1,8 @@
+/**
+ * Utility helpers for message formatting, splitting, image processing,
+ * and conversation history management.
+ * @module utils/aiUtils
+ */
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const https = require('https');
@@ -6,6 +11,8 @@ const http = require('http');
 /**
  * System message constants for OpenAI API
  */
+/** @typedef {{role: 'system'|'user'|'assistant', content: any}} ConversationMessage */
+
 const SYSTEM_MESSAGES = {
   BASE: (modelName, visionCapability) => `You are a helpful assistant powered by the ${modelName} model. ${visionCapability} You are aware that you are using the ${modelName} model and can reference this when appropriate. 
 
@@ -34,6 +41,12 @@ const MESSAGE_CONFIG = {
  * @param {string} text - The text to split into chunks
  * @param {number} [limit=2000] - Maximum length for each chunk
  * @returns {string[]} Array of message chunks
+ */
+/**
+ * Splits a string into chunks that fit within Discord's message limit.
+ * @param {string} text
+ * @param {number} [limit=2000]
+ * @returns {string[]}
  */
 function splitMessage(text, limit = 2000) {
   try {
@@ -103,6 +116,12 @@ function splitMessage(text, limit = 2000) {
  * @param {number} limit - Maximum length for the chunk
  * @returns {number} The best split point index
  */
+/**
+ * Computes an optimal split index within the limit.
+ * @param {string} text
+ * @param {number} limit
+ * @returns {number}
+ */
 function findBestSplitPoint(text, limit) {
   if (text.length <= limit) {
     return text.length;
@@ -148,6 +167,13 @@ function findBestSplitPoint(text, limit) {
  * @param {number} maxPos - Maximum position to search up to
  * @returns {number} The position of the last occurrence, or -1 if not found
  */
+/**
+ * Finds the last occurrence of a substring before a given index.
+ * @param {string} text
+ * @param {string} searchStr
+ * @param {number} maxPos
+ * @returns {number}
+ */
 function findLastOccurrence(text, searchStr, maxPos) {
   const searchLength = searchStr.length;
   let lastPos = -1;
@@ -170,6 +196,11 @@ function findLastOccurrence(text, searchStr, maxPos) {
  * 
  * @param {string} url - The URL of the image to download
  * @returns {Promise<string>} Base64 encoded image data with mime type
+ */
+/**
+ * Downloads an image and returns it as a data URL.
+ * @param {string} url
+ * @returns {Promise<string>}
  */
 async function downloadImageAsBase64(url) {
   return new Promise((resolve, reject) => {
@@ -202,6 +233,12 @@ async function downloadImageAsBase64(url) {
  * @param {Array} imageContents - Array of image content objects
  * @returns {Array} Message content array for OpenAI API
  */
+/**
+ * Builds an OpenAI Responses API content array from text and images.
+ * @param {string} text
+ * @param {Array} imageContents
+ * @returns {Array}
+ */
 function createMessageContent(text, imageContents = []) {
   const content = [];
   
@@ -222,6 +259,11 @@ function createMessageContent(text, imageContents = []) {
  * 
  * @param {Array} attachments - Array of Discord message attachments
  * @returns {Promise<Array>} Array of processed image content objects
+ */
+/**
+ * Converts Discord attachments to OpenAI image content entries.
+ * @param {Array} attachments
+ * @returns {Promise<Array>}
  */
 async function processImageAttachments(attachments) {
   const imageContents = [];
@@ -258,6 +300,11 @@ async function processImageAttachments(attachments) {
  * @param {Array<{role: string, content: string|Array}>} conversation - Array of conversation messages
  * @returns {boolean} True if the conversation contains images
  */
+/**
+ * Checks whether the conversation contains image entries.
+ * @param {ConversationMessage[]} conversation
+ * @returns {boolean}
+ */
 function hasImages(conversation) {
   return conversation.some(message => {
     if (Array.isArray(message.content)) {
@@ -273,6 +320,12 @@ function hasImages(conversation) {
  * @param {Array} channelHistory - The conversation history array
  * @param {number} maxHistoryLength - Maximum number of messages to keep
  * @returns {Array} The trimmed conversation history
+ */
+/**
+ * Trims a channel's conversation history to a maximum size while keeping the system message.
+ * @param {ConversationMessage[]} channelHistory
+ * @param {number} maxHistoryLength
+ * @returns {ConversationMessage[]}
  */
 function trimConversationHistory(channelHistory, maxHistoryLength) {
   if (channelHistory.length > maxHistoryLength + 1) {
@@ -290,6 +343,12 @@ function trimConversationHistory(channelHistory, maxHistoryLength) {
  * @param {string} modelName - The AI model name
  * @param {boolean} supportsVision - Whether the model supports vision
  * @returns {Object} The system message object
+ */
+/**
+ * Creates a system message suitable for initializing a new conversation.
+ * @param {string} modelName
+ * @param {boolean} supportsVision
+ * @returns {ConversationMessage}
  */
 function createSystemMessage(modelName, supportsVision) {
   const visionCapability = supportsVision 

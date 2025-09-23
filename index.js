@@ -1,3 +1,8 @@
+/**
+ * Entry point that initializes the Discord client, loads commands/events,
+ * and wires up interaction handlers.
+ * @module index
+ */
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -16,7 +21,17 @@ const client = new Client({
   ]
 });
 
+/**
+ * Registry of slash and context menu commands keyed by name.
+ * @type {Collection<string, {data: any, execute: Function}>}
+ */
 client.commands = new Collection();
+
+/**
+ * In-memory conversation history per channel.
+ * Key: channelId, Value: Array of message entries compatible with OpenAI API.
+ * @type {Map<string, Array<{role: string, content: any}>>}
+ */
 client.conversationHistory = new Map();
 
 const commandsPath = path.join(__dirname, 'commands');
@@ -42,6 +57,11 @@ for (const file of eventFiles) {
   try {
     const event = require(path.join(eventsPath, file));
     if (event.once) {
+      /**
+       * One-time event listener wrapper that logs and executes an event handler.
+       * @param {...any} args - Event-specific arguments
+       * @returns {void}
+       */
       client.once(event.name, (...args) => {
         try {
           logger.debug(`Executing event: ${event.name}`);
@@ -54,6 +74,11 @@ for (const file of eventFiles) {
         }
       });
     } else {
+      /**
+       * Recurring event listener wrapper that logs and executes an event handler.
+       * @param {...any} args - Event-specific arguments
+       * @returns {void}
+       */
       client.on(event.name, (...args) => {
         try {
           logger.debug(`Executing event: ${event.name}`);
@@ -79,6 +104,11 @@ client.once('clientReady', async () => {
   logger.info(`Bot is online: ${client.user.tag}`);
 });
 
+/**
+ * Handler for slash command interactions.
+ * @param {import('discord.js').Interaction} interaction - The interaction payload
+ * @returns {Promise<void>}
+ */
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -114,6 +144,11 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+/**
+ * Handler for context menu interactions.
+ * @param {import('discord.js').Interaction} interaction - The interaction payload
+ * @returns {Promise<void>}
+ */
 client.on('interactionCreate', async interaction => {
   if (!interaction.isContextMenuCommand()) return;
 

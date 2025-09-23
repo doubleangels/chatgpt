@@ -1,25 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <meta charset="UTF-8">
   <title>ChatGPT Discord Bot Docs</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/themes/vue.css" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+  <meta name="description" content="Description">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <!-- Dark theme inspired by ChatGPT -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify-themeable@0/dist/css/theme-simple-dark.css">
+  <style>
+    :root {
+      --theme-hue: 160; /* green hue */
+      --base-background-color: #0e0f12;
+      --base-color: #e7e7e8;
+      --sidebar-background: #0b0c0f;
+      --sidebar-border-color: #1f232a;
+      --heading-color: #ffffff;
+      --link-color: #10a37f;
+      --link-color--hover: #19b68f;
+      --code-inline-background: #1b1f24;
+      --code-theme-background: #101317;
+      --code-theme-text: #e6e6e6;
+      --notice-tip-background: #0f1a17;
+      --notice-tip-border: #10a37f;
+      --notice-important-background: #1a1414;
+      --notice-important-border: #b54b4b;
+    }
+    .app-name, .sidebar-nav a.active { color: #10a37f !important; }
+    .markdown-section a { text-decoration: none; }
+    .markdown-section a:hover { text-decoration: underline; }
+    .sidebar-toggle { background: #10a37f; }
+  </style>
 </head>
 <body>
   <div id="app"></div>
   <script>
-    window.$docsify = {
-      name: 'ChatGPT Discord Bot',
-      repo: 'doubleangels/chatgpt',
-      loadSidebar: true,
-      subMaxLevel: 2,
-      auto2top: true,
-      basePath: '/',
-    };
+    (function() {
+      var isGhPages = /github\.io$/.test(location.hostname);
+      window.$docsify = {
+        name: 'ChatGPT Discord Bot',
+        repo: 'doubleangels/chatgpt',
+        loadSidebar: true,
+        subMaxLevel: 2,
+        auto2top: true,
+        routerMode: 'hash',
+        basePath: isGhPages ? '/chatgpt/' : ''
+      };
+    })();
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+  <!-- Docsify v4 + plugins -->
+  <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code"></script>
 </body>
 </html>
-

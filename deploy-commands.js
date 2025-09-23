@@ -1,3 +1,7 @@
+/**
+ * Script to deploy slash commands to Discord for this application.
+ * @module deploy-commands
+ */
 const { REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +14,10 @@ const config = require('./config');
  * 
  * @returns {Promise<void>} A promise that resolves when commands are deployed
  * @throws {Error} If command deployment fails
+ */
+/**
+ * Registers all commands under the `commands/` directory with Discord.
+ * @returns {Promise<void>}
  */
 async function deployCommands() {
   const commands = [];

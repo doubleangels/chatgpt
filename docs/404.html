@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting...</title>
+    <meta http-equiv="refresh" content="0; url=/chatgpt/#/" />
+    <script>
+      (function() {
+        // Redirect unknown routes to Docsify hash router
+        var base = '/chatgpt/';
+        var path = location.pathname.replace(base, '');
+        var hash = location.hash || '';
+        var search = location.search || '';
+        var target = base + '#/' + path + search + hash;
+        location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    Redirecting...
+  </body>
+  </html>
+
+
