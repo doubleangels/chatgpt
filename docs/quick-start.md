@@ -1,7 +1,3 @@
----
-title: Quick Start
----
-
 # Quick Start
 
 1. Clone the repo and install dependencies:
@@ -25,6 +21,3 @@ npm run deploy
 ```bash
 npm start
 ```
-
-For Docker, see [Docker Deployment](./docker.md).
-

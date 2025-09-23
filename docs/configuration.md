@@ -1,7 +1,3 @@
----
-title: Configuration
----
-
 # Configuration
 
 Set environment variables via `.env`, Docker, or your host environment.
@@ -14,6 +10,3 @@ Set environment variables via `.env`, Docker, or your host environment.
 | `MODEL_NAME` | OpenAI model to use | No | `gpt-4o-mini` |
 | `MAX_HISTORY_LENGTH` | Messages to retain in history | No | `10` |
 | `LOG_LEVEL` | Logging verbosity | No | `info` |
-
-See the README for supported models and details.
-

@@ -1,7 +1,3 @@
----
-title: Troubleshooting
----
-
 # Troubleshooting
 
 ## Common Issues
@@ -13,4 +9,3 @@ title: Troubleshooting
 ## Logs
 
 Run with `LOG_LEVEL=debug` for more verbose logs.
-

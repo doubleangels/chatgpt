@@ -9,6 +9,24 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
 
 > Documentation: https://doubleangels.github.com/chatgpt/
 
+### Local docs preview (Docsify)
+
+No build step is required. Serve the `docs/` directory statically or use the docsify CLI.
+
+Option A: quick one-liner with npx
+
+```bash
+npx docsify-cli@latest serve docs --open
+```
+
+Option B: any static server
+
+```bash
+npx http-server docs -p 3000
+# or
+python -m http.server --directory docs 3000
+```
+
 ### Local docs preview (MkDocs Material via git)
 
 This repo uses MkDocs Material as a submodule per the "with git" approach [@https://squidfunk.github.io/mkdocs-material/getting-started/#with-git].

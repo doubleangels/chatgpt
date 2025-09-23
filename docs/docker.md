@@ -1,7 +1,3 @@
----
-title: Docker Deployment
----
-
 # Docker Deployment
 
 Recommended deployment using Docker Compose:
@@ -27,4 +23,3 @@ To start:
 ```bash
 docker compose up -d
 ```
-
