@@ -94,7 +94,7 @@ jobs:
     needs: [build]
     if: >
       github.event_name == 'pull_request' &&
-      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
       needs.build.result == 'success'
     runs-on: ubuntu-latest
     permissions:
