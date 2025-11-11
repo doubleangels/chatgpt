@@ -101,7 +101,7 @@ jobs:
       pull-requests: write
       contents: write
     steps:
-      - name: Enable auto-merge for Dependabot PRs
+      - name: Automerge Dependabot PR
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
