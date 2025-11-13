@@ -1,19 +1,19 @@
 const { OpenAI } = require('openai');
-const { openaiApiKey, modelName, getTemperature } = require('../config');
+const { openaiApiKey, modelName, getTemperature, maxCompletionTokens, reasoningEffort, responsesVerbosity } = require('../config');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { hasImages, SYSTEM_MESSAGES } = require('./aiUtils');
 
 /**
  * Determines the correct token parameter name based on the model.
- * GPT-5 models use 'max_completion_tokens' while older models use 'max_tokens'.
+ * GPT-5 models use 'max_output_tokens' while older models use 'max_tokens'.
  * 
  * @param {string} model - The model name
  * @returns {string} The correct parameter name
  */
 function getTokenParameterName(model) {
   if (model.startsWith('gpt-5')) {
-    return 'max_completion_tokens';
+    return 'max_output_tokens';
   }
   return 'max_tokens';
 }
@@ -27,6 +27,32 @@ function getTokenParameterName(model) {
  */
 function supportsCustomTemperature(model) {
   return true;
+}
+
+/**
+ * Determines if the model supports reasoning effort configuration.
+ *
+ * @param {string} model - The model name
+ * @returns {boolean} True if the model supports reasoning effort
+ */
+function supportsReasoning(model) {
+  return model.startsWith('gpt-5') ||
+    model.startsWith('gpt-4o') ||
+    model.startsWith('gpt-4.1') ||
+    model.startsWith('o1');
+}
+
+/**
+ * Determines if the model supports verbosity configuration.
+ *
+ * @param {string} model - The model name
+ * @returns {boolean} True if the model supports verbosity settings
+ */
+function supportsVerbosity(model) {
+  return model.startsWith('gpt-5') ||
+    model.startsWith('gpt-4o') ||
+    model.startsWith('gpt-4.1') ||
+    model.startsWith('o1');
 }
 
 /**
@@ -67,6 +93,33 @@ async function generateAIResponse(conversation) {
         model: modelName,
         input: messages
       };
+
+      const normalizedReasoningEffort = typeof reasoningEffort === 'string'
+        ? reasoningEffort.trim().toLowerCase()
+        : '';
+
+      if (supportsReasoning(modelName) && ['low', 'medium', 'high'].includes(normalizedReasoningEffort)) {
+        requestParams.reasoning = { effort: normalizedReasoningEffort };
+      }
+
+      const normalizedVerbosity = typeof responsesVerbosity === 'string'
+        ? responsesVerbosity.trim().toLowerCase()
+        : '';
+
+      if (supportsVerbosity(modelName) && ['low', 'medium', 'high'].includes(normalizedVerbosity)) {
+        requestParams.text = {
+          ...(requestParams.text || {}),
+          verbosity: normalizedVerbosity
+        };
+      }
+
+      const tokenLimit = Number.isFinite(maxCompletionTokens) && maxCompletionTokens > 0
+        ? maxCompletionTokens
+        : undefined;
+
+      if (tokenLimit) {
+        requestParams[tokenParam] = tokenLimit;
+      }
       
       let temperatureValue = null;
       if (supportsCustomTemperature(modelName)) {

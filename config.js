@@ -12,6 +12,9 @@ const config = {
   modelName: process.env.MODEL_NAME || 'gpt-4o-mini',
   maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH) || 10,
   logLevel: process.env.LOG_LEVEL || 'info',
+  maxCompletionTokens: parseInt(process.env.MAX_COMPLETION_TOKENS, 10) || 3000,
+  reasoningEffort: process.env.REASONING_EFFORT || 'medium',
+  responsesVerbosity: process.env.RESPONSES_VERBOSITY || 'medium',
 };
 
 /**

@@ -44,6 +44,9 @@ services:
       - OPENAI_API_KEY=your_openai_api_key_here
       - MODEL_NAME=gpt-4o-mini
       - MAX_HISTORY_LENGTH=10
+      - MAX_COMPLETION_TOKENS=3000
+      - REASONING_EFFORT=medium
+      - RESPONSES_VERBOSITY=medium
       - LOG_LEVEL=info
     networks:
       - chatgpt-network
@@ -82,6 +85,9 @@ DISCORD_CLIENT_ID=your_discord_client_id_here
 OPENAI_API_KEY=your_openai_api_key_here
 MODEL_NAME=gpt-4o-mini
 MAX_HISTORY_LENGTH=10
+MAX_COMPLETION_TOKENS=3000
+REASONING_EFFORT=medium
+RESPONSES_VERBOSITY=medium
 LOG_LEVEL=info
 ```
 
@@ -108,6 +114,9 @@ npm start
 | `OPENAI_API_KEY`     | OpenAI API key for AI services      | ✅       | -             | -                        |
 | `MODEL_NAME`         | OpenAI model to use                 | ❌       | `gpt-4o-mini` | `gpt-4o`, `gpt-5-nano`   |
 | `MAX_HISTORY_LENGTH` | Max conversation messages to retain | ❌       | `10`          | `20`                     |
+| `MAX_COMPLETION_TOKENS` | Upper bound on tokens generated per response | ❌       | `3000`       | `250`                    |
+| `REASONING_EFFORT`    | Additional reasoning depth (`low`, `medium`, `high`) for supported models | ❌ | `medium` | `medium` |
+| `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`) | ❌ | `medium` | `medium` |
 | `LOG_LEVEL`          | Logging verbosity                   | ❌       | `info`        | `debug`, `warn`, `error` |
 
 ### Supported Models
