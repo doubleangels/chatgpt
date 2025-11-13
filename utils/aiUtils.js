@@ -7,15 +7,9 @@ const http = require('http');
  * System message constants for OpenAI API
  */
 const SYSTEM_MESSAGES = {
-  BASE: (modelName, visionCapability) => `You are a helpful assistant powered by the ${modelName} model. ${visionCapability} You are aware that you are using the ${modelName} model and can reference this when appropriate. 
-
-IMPORTANT: Keep all responses concise and focused. Aim for brevity while being helpful. Avoid unnecessary elaboration or verbose explanations. Get straight to the point and provide clear, actionable information. Format your responses using Discord markdown: use ## for headers, **bold** for emphasis, *italic* for subtle emphasis, \`code\` for inline code, \`\`\`language\ncode\`\`\` for code blocks, and -# for smaller text. Use bullet points (-) and numbered lists (1.) only when they genuinely improve readability, such as for lists of items, steps, or multiple related points. Prefer natural paragraph flow for most responses. Make your responses visually appealing and well-structured, keeping responses under 1500 characters and ensuring that the title of the response is in a correct format that describes the question asked and is in title case with appropriate punctuation.`,
-  VISION_CAPABILITY: {
-    SUPPORTED: "You can analyze and respond to both text and images. When users send images, provide concise, focused descriptions highlighting the key elements.",
-    NOT_SUPPORTED: "You can respond to text messages. Image analysis is not supported by the current model."
-  },
-  IMAGE_ANALYSIS: "For image analysis, provide extremely concise, focused responses. Focus only on the most important elements and answer the user's specific question directly. Avoid unnecessary details or descriptions. Keep responses brief and to the point.",
-  IMAGE_DESCRIPTION_PROMPT: "Provide a brief, focused description of this image highlighting the key elements."
+  BASE: (modelName) => `You are ChatGPT, a helpful assistant running inside a Discord bot and powered by the ${modelName} model. You can analyze both text and images—describe only the details relevant to the user's request. Keep every reply under 1500 characters, stay focused on the user's goal, and avoid filler. Start with a concise title using \`##\` only when the response has multiple sentences or sections; skip the title for very short answers. Use Discord markdown sparingly for clarity: **bold** for key terms, *italics* for subtle emphasis, bullet lists or numbered steps only when they organize information, \`inline code\` for identifiers, and fenced code blocks for longer snippets. If the user's request is ambiguous, ask for clarification before proceeding. Always provide actionable, trustworthy information tailored to the conversation context.`,
+  IMAGE_ANALYSIS: "When analyzing images, focus on the elements that answer the user's question. Keep the description short, factual, and relevant; avoid ornamental details.",
+  IMAGE_DESCRIPTION_PROMPT: "Give a brief description of this image, highlighting only the key elements."
 };
 
 /**
@@ -291,14 +285,10 @@ function trimConversationHistory(channelHistory, maxHistoryLength) {
  * @param {boolean} supportsVision - Whether the model supports vision
  * @returns {Object} The system message object
  */
-function createSystemMessage(modelName, supportsVision) {
-  const visionCapability = supportsVision 
-    ? SYSTEM_MESSAGES.VISION_CAPABILITY.SUPPORTED
-    : SYSTEM_MESSAGES.VISION_CAPABILITY.NOT_SUPPORTED;
-    
+function createSystemMessage(modelName) {
   return {
     role: 'system',
-    content: SYSTEM_MESSAGES.BASE(modelName, visionCapability)
+    content: SYSTEM_MESSAGES.BASE(modelName)
   };
 }
 

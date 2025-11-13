@@ -3,8 +3,7 @@ const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage, processImageAttachments, createMessageContent, trimConversationHistory, createSystemMessage, SYSTEM_MESSAGES } = require('../utils/aiUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
-const { maxHistoryLength, modelName, supportsVision } = require('../config');
-const config = require('../config');
+const { maxHistoryLength, modelName } = require('../config');
 
 /**
  * Message create event handler module
@@ -78,22 +77,14 @@ module.exports = {
     
     let imageContents = [];
     if (message.attachments && message.attachments.size > 0) {
-      if (!supportsVision()) {
-        logger.warn(`Image attachments detected but current model ${modelName} does not support vision. Images will be ignored.`);
-        await message.reply({
-          content: "⚠️ I received an image, but the current model doesn't support image analysis. Please use a model that has image support.",
-          ephemeral: true
-        });
-      } else {
-        logger.debug(`Processing ${message.attachments.size} attachment(s) from message ${message.id}`);
-        imageContents = await processImageAttachments(Array.from(message.attachments.values()));
-        logger.info(`Processed ${imageContents.length} image(s) from message ${message.id}`);
-      }
+      logger.debug(`Processing ${message.attachments.size} attachment(s) from message ${message.id}`);
+      imageContents = await processImageAttachments(Array.from(message.attachments.values()));
+      logger.info(`Processed ${imageContents.length} image(s) from message ${message.id}`);
     }
 
     if (!client.conversationHistory.has(channelId)) {
       logger.debug(`No conversation history found for channel ${channelId}.`);
-      const systemMessage = createSystemMessage(modelName, supportsVision());
+      const systemMessage = createSystemMessage(modelName);
       client.conversationHistory.set(channelId, [systemMessage]);
       logger.info(`Created new conversation history for channel ${channelId}.`);
     }
@@ -113,7 +104,7 @@ module.exports = {
     const messageContent = createMessageContent(userText, imageContents);
     
     let finalMessageContent = messageContent;
-    if (imageContents.length > 0 && supportsVision()) {
+    if (imageContents.length > 0) {
       if (!userText || userText.trim() === '') {
         finalMessageContent = [
           {

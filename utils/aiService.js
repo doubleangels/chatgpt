@@ -1,22 +1,8 @@
 const { OpenAI } = require('openai');
-const { openaiApiKey, modelName, getTemperature, maxCompletionTokens, reasoningEffort, responsesVerbosity } = require('../config');
+const { openaiApiKey, modelName, getTemperature, reasoningEffort, responsesVerbosity } = require('../config');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { hasImages, SYSTEM_MESSAGES } = require('./aiUtils');
-
-/**
- * Determines the correct token parameter name based on the model.
- * GPT-5 models use 'max_output_tokens' while older models use 'max_tokens'.
- * 
- * @param {string} model - The model name
- * @returns {string} The correct parameter name
- */
-function getTokenParameterName(model) {
-  if (model.startsWith('gpt-5')) {
-    return 'max_output_tokens';
-  }
-  return 'max_tokens';
-}
 
 /**
  * Determines if the model supports custom temperature values.
@@ -35,26 +21,6 @@ function supportsCustomTemperature(model) {
  * @param {string} model - The model name
  * @returns {boolean} True if the model supports reasoning effort
  */
-function supportsReasoning(model) {
-  return model.startsWith('gpt-5') ||
-    model.startsWith('gpt-4o') ||
-    model.startsWith('gpt-4.1') ||
-    model.startsWith('o1');
-}
-
-/**
- * Determines if the model supports verbosity configuration.
- *
- * @param {string} model - The model name
- * @returns {boolean} True if the model supports verbosity settings
- */
-function supportsVerbosity(model) {
-  return model.startsWith('gpt-5') ||
-    model.startsWith('gpt-4o') ||
-    model.startsWith('gpt-4.1') ||
-    model.startsWith('o1');
-}
-
 /**
  * OpenAI client instance configured with API key
  * @type {OpenAI}
@@ -78,7 +44,6 @@ async function generateAIResponse(conversation) {
   }
 
       try {
-      const tokenParam = getTokenParameterName(modelName);
       const supportsTemp = supportsCustomTemperature(modelName);
       
       let messages = [...conversation];
@@ -98,7 +63,7 @@ async function generateAIResponse(conversation) {
         ? reasoningEffort.trim().toLowerCase()
         : '';
 
-      if (supportsReasoning(modelName) && ['low', 'medium', 'high'].includes(normalizedReasoningEffort)) {
+      if (['low', 'medium', 'high'].includes(normalizedReasoningEffort)) {
         requestParams.reasoning = { effort: normalizedReasoningEffort };
       }
 
@@ -106,20 +71,14 @@ async function generateAIResponse(conversation) {
         ? responsesVerbosity.trim().toLowerCase()
         : '';
 
-      if (supportsVerbosity(modelName) && ['low', 'medium', 'high'].includes(normalizedVerbosity)) {
+      if (['low', 'medium', 'high'].includes(normalizedVerbosity)) {
         requestParams.text = {
           ...(requestParams.text || {}),
           verbosity: normalizedVerbosity
         };
       }
 
-      const tokenLimit = Number.isFinite(maxCompletionTokens) && maxCompletionTokens > 0
-        ? maxCompletionTokens
-        : undefined;
-
-      if (tokenLimit) {
-        requestParams[tokenParam] = tokenLimit;
-      }
+      // Let the API determine output length; no explicit max token limit is set.
       
       let temperatureValue = null;
       if (supportsCustomTemperature(modelName)) {

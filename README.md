@@ -9,7 +9,7 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
 
 ## ✨ Features
 
-- **🤖 AI-Powered Conversations**: Leverage OpenAI's latest language models (GPT-4o-mini, GPT-4o, GPT-5-nano, etc.) for dynamic, context-aware conversations
+- **🤖 AI-Powered Conversations**: Leverage OpenAI's GPT-5 family (`gpt-5`, `gpt-5-nano`, `gpt-5-mini`) for dynamic, context-aware conversations
 - **🖼️ Image Analysis**: Analyze and respond to images using vision-capable models with detailed descriptions and insights
 - **💬 Multi-Channel Support**: Maintain separate conversation histories for each user in each channel
 - **📝 Rich Formatting**: Beautiful Discord markdown formatting with headers, code blocks, lists, and emphasis
@@ -42,9 +42,8 @@ services:
       - DISCORD_BOT_TOKEN=your_discord_bot_token_here
       - DISCORD_CLIENT_ID=your_discord_client_id_here
       - OPENAI_API_KEY=your_openai_api_key_here
-      - MODEL_NAME=gpt-4o-mini
+      - MODEL_NAME=gpt-5-nano
       - MAX_HISTORY_LENGTH=10
-      - MAX_COMPLETION_TOKENS=3000
       - REASONING_EFFORT=medium
       - RESPONSES_VERBOSITY=medium
       - LOG_LEVEL=info
@@ -83,9 +82,8 @@ npm install
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 DISCORD_CLIENT_ID=your_discord_client_id_here
 OPENAI_API_KEY=your_openai_api_key_here
-MODEL_NAME=gpt-4o-mini
+MODEL_NAME=gpt-5-nano
 MAX_HISTORY_LENGTH=10
-MAX_COMPLETION_TOKENS=3000
 REASONING_EFFORT=medium
 RESPONSES_VERBOSITY=medium
 LOG_LEVEL=info
@@ -112,17 +110,17 @@ npm start
 | `DISCORD_BOT_TOKEN`  | Discord bot authentication token    | ✅       | -             | -                        |
 | `DISCORD_CLIENT_ID`  | Discord application client ID       | ✅       | -             | -                        |
 | `OPENAI_API_KEY`     | OpenAI API key for AI services      | ✅       | -             | -                        |
-| `MODEL_NAME`         | OpenAI model to use                 | ❌       | `gpt-4o-mini` | `gpt-4o`, `gpt-5-nano`   |
+| `MODEL_NAME`         | OpenAI model to use                 | ❌       | `gpt-5-nano`  | `gpt-5`, `gpt-5-mini`    |
 | `MAX_HISTORY_LENGTH` | Max conversation messages to retain | ❌       | `10`          | `20`                     |
-| `MAX_COMPLETION_TOKENS` | Upper bound on tokens generated per response | ❌       | `3000`       | `250`                    |
 | `REASONING_EFFORT`    | Additional reasoning depth (`low`, `medium`, `high`) for supported models | ❌ | `medium` | `medium` |
 | `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`) | ❌ | `medium` | `medium` |
 | `LOG_LEVEL`          | Logging verbosity                   | ❌       | `info`        | `debug`, `warn`, `error` |
 
 ### Supported Models
 
-- **Vision Models**: `gpt-4o-mini`, `gpt-4o`, `gpt-4-vision`, `gpt-5-nano`
-- **Text-Only Models**: `gpt-3.5-turbo`, `gpt-4-turbo`, `gpt-4`
+- `gpt-5`
+- `gpt-5-nano`
+- `gpt-5-mini`
 
 ## 🖼️ Image Analysis
 
