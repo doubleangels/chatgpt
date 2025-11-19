@@ -25,8 +25,8 @@ module.exports = {
       logger.info(`Bot is online: ${client.user.tag}`);
       logger.info(`Using AI model: ${modelName}`);
 
-      client.user.setActivity('for mentions! 🔔', { type: ActivityType.Watching });
-      logger.info(`Bot activity set to: for mentions! 🔔`);
+      client.user.setActivity('for mentions! 📢', { type: ActivityType.Watching });
+      logger.info(`Bot activity set to: for mentions! 📢`);
 
       const guilds = client.guilds.cache;
       const guildList = Array.from(guilds.values())
