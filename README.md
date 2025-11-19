@@ -32,7 +32,6 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
 1. **Create a `docker-compose.yml` file:**
 
 ```yaml
-version: "3.8"
 services:
   chatgpt:
     image: ghcr.io/doubleangels/chatgpt:latest
@@ -47,12 +46,6 @@ services:
       - REASONING_EFFORT=medium
       - RESPONSES_VERBOSITY=medium
       - LOG_LEVEL=info
-    networks:
-      - chatgpt-network
-
-networks:
-  chatgpt-network:
-    driver: bridge
 ```
 
 2. **Deploy the bot:**
@@ -105,16 +98,16 @@ npm start
 
 ### Environment Variables
 
-| Variable             | Description                         | Required | Default       | Example                  |
-| -------------------- | ----------------------------------- | -------- | ------------- | ------------------------ |
-| `DISCORD_BOT_TOKEN`  | Discord bot authentication token    | ✅       | -             | -                        |
-| `DISCORD_CLIENT_ID`  | Discord application client ID       | ✅       | -             | -                        |
-| `OPENAI_API_KEY`     | OpenAI API key for AI services      | ✅       | -             | -                        |
-| `MODEL_NAME`         | OpenAI model to use                 | ❌       | `gpt-5-nano`  | `gpt-5`, `gpt-5-mini`    |
-| `MAX_HISTORY_LENGTH` | Max conversation messages to retain | ❌       | `10`          | `20`                     |
-| `REASONING_EFFORT`    | Additional reasoning depth (`low`, `medium`, `high`) for supported models | ❌ | `medium` | `medium` |
-| `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`) | ❌ | `medium` | `medium` |
-| `LOG_LEVEL`          | Logging verbosity                   | ❌       | `info`        | `debug`, `warn`, `error` |
+| Variable              | Description                                                               | Required | Default      | Example                  |
+| --------------------- | ------------------------------------------------------------------------- | -------- | ------------ | ------------------------ |
+| `DISCORD_BOT_TOKEN`   | Discord bot authentication token                                          | ✅       | -            | -                        |
+| `DISCORD_CLIENT_ID`   | Discord application client ID                                             | ✅       | -            | -                        |
+| `OPENAI_API_KEY`      | OpenAI API key for AI services                                            | ✅       | -            | -                        |
+| `MODEL_NAME`          | OpenAI model to use                                                       | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
+| `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                       | ❌       | `10`         | `20`                     |
+| `REASONING_EFFORT`    | Additional reasoning depth (`low`, `medium`, `high`) for supported models | ❌       | `medium`     | `medium`                 |
+| `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`)             | ❌       | `medium`     | `medium`                 |
+| `LOG_LEVEL`           | Logging verbosity                                                         | ❌       | `info`       | `debug`, `warn`, `error` |
 
 ### Supported Models
 
@@ -182,7 +175,7 @@ chatgpt/
 │   └── ready.js       # Bot ready event
 ├── utils/             # Utility modules
 │   ├── aiService.js   # OpenAI API integration
-│   └── messageUtils.js # Message formatting utilities
+│   └── aiUtils.js     # AI utilities and message formatting
 ├── config.js          # Configuration management
 ├── deploy-commands.js # Command deployment script
 ├── index.js           # Main application entry point
