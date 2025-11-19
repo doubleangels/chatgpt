@@ -75,10 +75,6 @@ for (const file of eventFiles) {
   }
 }
 
-client.once('clientReady', async () => {
-  logger.info(`Bot is online: ${client.user.tag}`);
-});
-
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
