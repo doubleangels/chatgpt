@@ -30,7 +30,7 @@ services:
       - DISCORD_CLIENT_ID=your_discord_client_id_here
       - OPENAI_API_KEY=your_openai_api_key_here
       - MODEL_NAME=gpt-5-nano
-      - MAX_HISTORY_LENGTH=10
+      - MAX_HISTORY_LENGTH=20
       - REASONING_EFFORT=medium
       - RESPONSES_VERBOSITY=medium
       - LOG_LEVEL=info
@@ -52,7 +52,7 @@ docker-compose up -d
 | `DISCORD_CLIENT_ID`   | Discord application client ID                                             | ✅       | -            | -                        |
 | `OPENAI_API_KEY`      | OpenAI API key for AI services                                            | ✅       | -            | -                        |
 | `MODEL_NAME`          | OpenAI model to use                                                       | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
-| `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                       | ❌       | `10`         | `20`                     |
+| `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                       | ❌       | `20`         | `20`                     |
 | `REASONING_EFFORT`    | Additional reasoning depth (`low`, `medium`, `high`) for supported models | ❌       | `medium`     | `medium`                 |
 | `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`)             | ❌       | `medium`     | `medium`                 |
 | `LOG_LEVEL`           | Logging verbosity                                                         | ❌       | `info`       | `debug`, `warn`, `error` |

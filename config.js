@@ -28,7 +28,7 @@ const config = {
   clientId: process.env.DISCORD_CLIENT_ID,
   openaiApiKey: process.env.OPENAI_API_KEY,
   modelName: resolvedModel,
-  maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH, 10) || 10,
+  maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH, 10) || 20,
   logLevel: process.env.LOG_LEVEL || 'info',
   reasoningEffort: process.env.REASONING_EFFORT || 'medium',
   responsesVerbosity: process.env.RESPONSES_VERBOSITY || 'medium',
