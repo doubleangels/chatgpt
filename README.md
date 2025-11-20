@@ -93,9 +93,9 @@ The bot supports comprehensive image analysis when using vision-capable models:
 
 ## 🔧 Commands
 
-### `/reset` (Admin Only)
+### `/reset`
 
-Reset conversation history for a specific channel or all channels. Requires Administrator permissions.
+Reset conversation history for a specific channel or all channels.
 
 - **No channel specified**: Resets conversation history for all channels
 - **Channel specified**: Resets conversation history for the selected channel only

@@ -1,21 +1,19 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ChannelType } = require('discord.js'); 
+const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js'); 
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 
 /**
- * Reset command module that allows administrators to reset conversation history.
+ * Reset command module that allows users to reset conversation history.
  * @module commands/reset
  */
 module.exports = {
   /**
    * Command data for the reset command.
-   * Requires administrator permissions to use.
    * @type {SlashCommandBuilder}
    */
   data: new SlashCommandBuilder()
     .setName('reset')
     .setDescription('Reset conversation history for a specific channel or all channels.')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addChannelOption(option =>
       option
         .setName('channel')
