@@ -31,8 +31,8 @@ services:
       - OPENAI_API_KEY=your_openai_api_key_here
       - MODEL_NAME=gpt-5-nano
       - MAX_HISTORY_LENGTH=20
-      - REASONING_EFFORT=medium
-      - RESPONSES_VERBOSITY=medium
+      - REASONING_EFFORT=minimal
+      - RESPONSES_VERBOSITY=low
       - LOG_LEVEL=info
 ```
 
@@ -46,16 +46,16 @@ docker-compose up -d
 
 ### Environment Variables
 
-| Variable              | Description                                                               | Required | Default      | Example                  |
-| --------------------- | ------------------------------------------------------------------------- | -------- | ------------ | ------------------------ |
-| `DISCORD_BOT_TOKEN`   | Discord bot authentication token                                          | ✅       | -            | -                        |
-| `DISCORD_CLIENT_ID`   | Discord application client ID                                             | ✅       | -            | -                        |
-| `OPENAI_API_KEY`      | OpenAI API key for AI services                                            | ✅       | -            | -                        |
-| `MODEL_NAME`          | OpenAI model to use                                                       | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
-| `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                       | ❌       | `20`         | `20`                     |
-| `REASONING_EFFORT`    | Additional reasoning depth (`low`, `medium`, `high`) for supported models | ❌       | `medium`     | `medium`                 |
-| `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`)             | ❌       | `medium`     | `medium`                 |
-| `LOG_LEVEL`           | Logging verbosity                                                         | ❌       | `info`       | `debug`, `warn`, `error` |
+| Variable              | Description                                                                          | Required | Default      | Example                  |
+| --------------------- | ------------------------------------------------------------------------------------ | -------- | ------------ | ------------------------ |
+| `DISCORD_BOT_TOKEN`   | Discord bot authentication token                                                     | ✅       | -            | -                        |
+| `DISCORD_CLIENT_ID`   | Discord application client ID                                                        | ✅       | -            | -                        |
+| `OPENAI_API_KEY`      | OpenAI API key for AI services                                                       | ✅       | -            | -                        |
+| `MODEL_NAME`          | OpenAI model to use                                                                  | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
+| `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                                  | ❌       | `20`         | `20`                     |
+| `REASONING_EFFORT`    | Additional reasoning depth (`minimal`, `low`, `medium`, `high`) for supported models | ❌       | `minimal`    | `medium`                 |
+| `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`)                        | ❌       | `low`        | `medium`                 |
+| `LOG_LEVEL`           | Logging verbosity                                                                    | ❌       | `info`       | `debug`, `warn`, `error` |
 
 ### Supported Models
 

@@ -30,8 +30,8 @@ const config = {
   modelName: resolvedModel,
   maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH, 10) || 20,
   logLevel: process.env.LOG_LEVEL || 'info',
-  reasoningEffort: process.env.REASONING_EFFORT || 'medium',
-  responsesVerbosity: process.env.RESPONSES_VERBOSITY || 'medium',
+  reasoningEffort: process.env.REASONING_EFFORT || 'minimal',
+  responsesVerbosity: process.env.RESPONSES_VERBOSITY || 'low',
 };
 
 /**
