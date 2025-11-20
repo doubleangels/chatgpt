@@ -46,6 +46,11 @@ module.exports = {
       logger.debug('Initialized conversation history storage.');
     }
 
+    if (!client.channelLocks) {
+      client.channelLocks = new Map();
+      logger.debug('Initialized channel locks storage.');
+    }
+
     logger.info('Bot is ready and setup complete.', {
       readyTimestamp: new Date().toISOString()
     });

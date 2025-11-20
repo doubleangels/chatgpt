@@ -18,6 +18,7 @@ const client = new Client({
 
 client.commands = new Collection();
 client.conversationHistory = new Map();
+client.channelLocks = new Map();
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
