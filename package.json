@@ -1,30 +1,31 @@
 {
-    "name": "chatgpt",
-    "version": "1.0.0",
-    "description": "A Discord bot that uses ChatGPT to respond to messages",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js",
-        "dev": "nodemon index.js",
-        "deploy": "node deploy-commands.js"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/doubleangels/chatgpt.git"
-    },
-    "author": "doubleangels",
-    "bugs": {
-        "url": "https://github.com/doubleangels/chatgpt/issues"
-    },
-    "homepage": "https://github.com/doubleangels/chatgpt#readme",
-    "dependencies": {
-        "discord.js": "^14.25.1",
-        "dotenv": "^17.2.3",
-        "openai": "^6.9.1",
-        "pino": "^9.6.0"
-    },
-    "devDependencies": {
-        "nodemon": "^3.1.11",
-        "pino-pretty": "^13.0.0"
-    }
+  "name": "chatgpt",
+  "version": "1.0.0",
+  "description": "A Discord bot that uses ChatGPT to respond to messages",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "deploy": "node deploy-commands.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/doubleangels/chatgpt.git"
+  },
+  "author": "doubleangels",
+  "bugs": {
+    "url": "https://github.com/doubleangels/chatgpt/issues"
+  },
+  "homepage": "https://github.com/doubleangels/chatgpt#readme",
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.2.3",
+    "openai": "^6.9.1",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
 }
