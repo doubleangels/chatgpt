@@ -30,7 +30,7 @@ module.exports = {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ ephemeral: false });
     const client = interaction.client;
     const userId = interaction.user.id;
     const guildName = interaction.guild?.name || 'unknown';
@@ -53,7 +53,8 @@ module.exports = {
             .setColor(0xFF0000)
             .setTitle('⚠️ No History Found')
             .setDescription(`No conversation history found for channel #${channelName}.`);
-          await interaction.editReply({ embeds: [embed] });
+          await interaction.deleteReply();
+          await interaction.followUp({ embeds: [embed], ephemeral: true });
           return;
         }
 
@@ -82,7 +83,8 @@ module.exports = {
             .setColor(0xFF0000)
             .setTitle('⚠️ No History Found')
             .setDescription('No conversation history found in any channel.');
-          await interaction.editReply({ embeds: [embed] });
+          await interaction.deleteReply();
+          await interaction.followUp({ embeds: [embed], ephemeral: true });
           return;
         }
 
@@ -110,7 +112,8 @@ module.exports = {
         .setColor(0xFF0000)
         .setTitle('⚠️ Error')
         .setDescription('An error occurred while trying to reset the conversation history.');
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.deleteReply();
+      await interaction.followUp({ embeds: [embed], ephemeral: true });
     }
   },
 };
