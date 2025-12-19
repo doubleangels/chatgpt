@@ -103,6 +103,22 @@ module.exports = {
         logger.info(`Processed ${imageContents.length} image(s) from message ${message.id}`);
       }
 
+      // Check if replying to another user's message with images
+      if (referencedMessage && !isReplyToBot && referencedMessage.author.id !== client.user.id) {
+        if (referencedMessage.attachments && referencedMessage.attachments.size > 0) {
+          const referencedImageAttachments = Array.from(referencedMessage.attachments.values()).filter(
+            attachment => attachment.contentType && attachment.contentType.startsWith('image/')
+          );
+          
+          if (referencedImageAttachments.length > 0) {
+            logger.debug(`Processing ${referencedImageAttachments.length} image(s) from referenced message ${referencedMessage.id}`);
+            const referencedImages = await processImageAttachments(referencedImageAttachments);
+            imageContents.push(...referencedImages);
+            logger.info(`Processed ${referencedImages.length} image(s) from referenced message ${referencedMessage.id}`);
+          }
+        }
+      }
+
       if (!client.conversationHistory.has(channelId)) {
         logger.debug(`No conversation history found for channel ${channelId}.`);
         const systemMessage = createSystemMessage(modelName);
