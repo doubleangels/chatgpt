@@ -1,4 +1,4 @@
-const { Events, MessageType } = require('discord.js');
+const { Events } = require('discord.js');
 const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage, processImageAttachments, createMessageContent, trimConversationHistory, createSystemMessage, SYSTEM_MESSAGES } = require('../utils/aiUtils');
 const path = require('path');
