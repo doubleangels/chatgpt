@@ -7,7 +7,11 @@ updates:
     target-branch: "dev"
     commit-message:
       prefix: "[Github Actions]"
-
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+  
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -15,3 +19,9 @@ updates:
     target-branch: "dev"
     commit-message:
       prefix: "[NPM]"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+    open-pull-requests-limit: 10

@@ -1,24 +1,28 @@
-FROM node:24-alpine AS base
+FROM node:24-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache dumb-init
+# Install runtime dependencies
+RUN apk add --no-cache dumb-init su-exec
 
-RUN npm install -g npm@latest
-
-RUN node --version && npm --version
-
+# Create user and group
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S discordbot -u 1001
 
+# Copy package files for dependency installation
 COPY package*.json ./
 
-RUN npm ci --omit=dev && npm cache clean --force
+# Install dependencies with BuildKit cache mount for faster rebuilds
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --prefer-offline && \
+    npm cache clean --force
 
+# Copy application files
 COPY --chown=discordbot:nodejs . .
 
-USER discordbot
+# Ensure WORKDIR ownership is correct
+RUN chown -R discordbot:nodejs /app
 
+# Use dumb-init for proper signal handling and run as non-root user
 ENTRYPOINT ["dumb-init", "--"]
-
-CMD ["node", "index.js"]
+CMD ["su-exec", "discordbot", "node", "index.js"]
