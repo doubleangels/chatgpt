@@ -11,8 +11,8 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
 
 ### Prerequisites
 
-- [Discord Bot Token](https://discord.com/developers/applications) - Create a new application and bot
-- [OpenAI API Key](https://platform.openai.com/overview) - Get your API key from OpenAI
+- [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/) - For secure secret management
+- [BWS Access Token](https://bitwarden.com/help/article/secrets-cli/) - Access token for Bitwarden Secrets Manager CLI
 - Docker and Docker Compose
 
 ### Docker Deployment
@@ -26,14 +26,7 @@ services:
     container_name: chatgpt-discord-bot
     restart: unless-stopped
     environment:
-      - DISCORD_BOT_TOKEN=your_discord_bot_token_here
-      - DISCORD_CLIENT_ID=your_discord_client_id_here
-      - OPENAI_API_KEY=your_openai_api_key_here
-      - MODEL_NAME=gpt-5-nano
-      - MAX_HISTORY_LENGTH=20
-      - REASONING_EFFORT=minimal
-      - RESPONSES_VERBOSITY=low
-      - LOG_LEVEL=info
+      - BWS_ACCESS_TOKEN=your_bws_access_token_here
 ```
 
 2. **Deploy the bot:**
@@ -46,16 +39,21 @@ docker-compose up -d
 
 ### Environment Variables
 
-| Variable              | Description                                                                          | Required | Default      | Example                  |
-| --------------------- | ------------------------------------------------------------------------------------ | -------- | ------------ | ------------------------ |
-| `DISCORD_BOT_TOKEN`   | Discord bot authentication token                                                     | ✅       | -            | -                        |
-| `DISCORD_CLIENT_ID`   | Discord application client ID                                                        | ✅       | -            | -                        |
-| `OPENAI_API_KEY`      | OpenAI API key for AI services                                                       | ✅       | -            | -                        |
-| `MODEL_NAME`          | OpenAI model to use                                                                  | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
-| `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                                  | ❌       | `20`         | `20`                     |
-| `REASONING_EFFORT`    | Additional reasoning depth (`minimal`, `low`, `medium`, `high`) for supported models | ❌       | `minimal`    | `medium`                 |
-| `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`)                        | ❌       | `low`        | `medium`                 |
-| `LOG_LEVEL`           | Logging verbosity                                                                    | ❌       | `info`       | `debug`, `warn`, `error` |
+| Variable            | Description                                                          | Required | Example |
+| ------------------- | -------------------------------------------------------------------- | -------- | ------- |
+| `BWS_ACCESS_TOKEN`  | Bitwarden Secrets Manager access token for retrieving secrets        | ✅       | -       |
+
+**Note:** Most secrets and API keys are automatically retrieved from Bitwarden Secrets Manager during container startup. You must provide `BWS_ACCESS_TOKEN` for the bot to access these secrets. The following secrets are retrieved from Bitwarden:
+- `DISCORD_BOT_TOKEN`
+- `DISCORD_CLIENT_ID`
+- `LOG_LEVEL`
+- `MAX_HISTORY_LENGTH`
+- `MODEL_NAME`
+- `OPENAI_API_KEY`
+- `REASONING_EFFORT`
+- `RESPONSES_VERBOSITY`
+
+Ensure your Bitwarden Secrets Manager access token is configured for the container to retrieve these secrets.
 
 ### Supported Models
 
