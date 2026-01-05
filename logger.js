@@ -5,14 +5,6 @@ const config = require('./config');
 // Create base logger with configuration
 const baseLogger = pino({
   level: config.logLevel || 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'SYS:standard',
-      ignore: 'pid,hostname'
-    }
-  },
   formatters: {
     level: (label) => {
       return { level: label.toUpperCase() };
