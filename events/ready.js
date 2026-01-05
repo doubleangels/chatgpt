@@ -22,20 +22,23 @@ module.exports = {
    */
   execute(client) {
     try {
-      logger.info(`Bot is online: ${client.user.tag}`);
-      logger.info(`Using AI model: ${modelName}`);
+      logger.info('Bot is online.', { botTag: client.user.tag });
+      logger.info('Using AI model.', { modelName });
 
       client.user.setActivity('for mentions! 📢', { type: ActivityType.Watching });
-      logger.info(`Bot activity set to: for mentions! 📢`);
+      logger.info('Bot activity set.', { activity: 'for mentions! 📢' });
 
       const guilds = client.guilds.cache;
-      const guildList = Array.from(guilds.values())
-        .map(guild => `${guild.name} (ID: ${guild.id})`)
-        .join(', ');
-      logger.info(`Bot is in ${guilds.size} guilds: ${guildList}`);
+      logger.info('Bot is in guilds.', {
+        guildCount: guilds.size,
+        guilds: Array.from(guilds.values()).map(guild => ({
+          name: guild.name,
+          id: guild.id
+        }))
+      });
 
     } catch (error) {
-      logger.error('Error getting guilds:', {
+      logger.error('Error getting guilds.', {
         error: error.stack,
         message: error.message
       });

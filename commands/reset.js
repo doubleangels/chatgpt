@@ -35,8 +35,10 @@ module.exports = {
     const userId = interaction.user.id;
     const guildName = interaction.guild?.name || 'unknown';
 
-    logger.info(`Reset command initiated by ${interaction.user.tag} in guild ${guildName}.`, {
+    logger.info('Reset command initiated.', {
+      userTag: interaction.user.tag,
       userId,
+      guildName,
       guildId: interaction.guildId
     });
 
@@ -48,7 +50,10 @@ module.exports = {
         const channelName = targetChannel.name;
         
         if (!client.conversationHistory.has(channelId)) {
-          logger.debug(`Reset command failed - no conversation history found for channel ${channelId}.`);
+          logger.debug('Reset command failed, no conversation history found for channel.', {
+            channelId,
+            channelName
+          });
           const embed = new EmbedBuilder()
             .setColor(0xFF0000)
             .setTitle('⚠️ No History Found')
@@ -63,7 +68,9 @@ module.exports = {
 
         client.conversationHistory.delete(channelId);
         
-        logger.info(`Conversation history deleted for channel ${channelId} (#${channelName}).`, {
+        logger.info('Conversation history deleted for channel.', {
+          channelId,
+          channelName,
           previousLength: currentLength
         });
 
@@ -78,7 +85,7 @@ module.exports = {
           .reduce((total, history) => total + history.length, 0);
 
         if (totalChannels === 0) {
-          logger.debug(`Reset command failed - no conversation history found in any channel.`);
+          logger.debug('Reset command failed, no conversation history found in any channel.');
           const embed = new EmbedBuilder()
             .setColor(0xFF0000)
             .setTitle('⚠️ No History Found')
@@ -90,7 +97,7 @@ module.exports = {
 
         client.conversationHistory.clear();
         
-        logger.info(`All conversation history cleared across ${totalChannels} channels.`, {
+        logger.info('All conversation history cleared.', {
           totalChannels,
           totalMessages
         });
@@ -102,7 +109,7 @@ module.exports = {
         await interaction.editReply({ embeds: [embed] });
       }
     } catch (error) {
-      logger.error(`Error executing reset command.`, {
+      logger.error('Error executing reset command.', {
         error: error.stack,
         userId,
         message: error.message

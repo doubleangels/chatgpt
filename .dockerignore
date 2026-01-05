@@ -107,6 +107,19 @@ data/
 README.md
 *.md
 
+# Image files (used for documentation/README only)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+
+# Deployment scripts
+deploy-commands.js
+
+# CI/CD files
+.github/
+
 # IDE files
 .vscode
 .idea

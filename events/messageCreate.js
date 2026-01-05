@@ -22,7 +22,7 @@ module.exports = {
    */
   async execute(message) {
     if (message.author.bot) {
-      logger.debug(`Ignoring bot message from ${message.author.tag}.`);
+      logger.debug('Ignoring bot message.', { botTag: message.author.tag });
       return;
     }
 
@@ -61,12 +61,16 @@ module.exports = {
           isReplyToBot = referencedMessage.author.id === client.user.id;
 
           if (isReplyToBot) {
-            logger.debug(`Message ${message.id} is a reply to bot's message: ${referencedMessage.id}.`);
+            logger.debug('Message is a reply to bot message.', {
+              messageId: message.id,
+              referencedMessageId: referencedMessage.id
+            });
           }
         } catch (error) {
-          logger.error(`Failed to fetch referenced message ${message.reference.messageId}.`, {
+          logger.error('Failed to fetch referenced message.', {
             error: error.stack,
             messageId: message.id,
+            referencedMessageId: message.reference.messageId,
             errorMessage: error.message
           });
         }
@@ -85,22 +89,39 @@ module.exports = {
           ephemeral: false
         });
       } catch (err) {
-        logger.warn(`Failed to send thinking message in channel ${channelId}.`, {
+        logger.warn('Failed to send thinking message.', {
           errorMessage: err.message,
           channelId
         });
       }
 
-      logger.info(`Message received from ${message.author.tag} in ${channelName}: ${message.content}`);
-      logger.debug(`Processing message from ${message.author.tag} in ${channelName}`);
+      logger.info('Message received from user.', {
+        userTag: message.author.tag,
+        userId: message.author.id,
+        channelName,
+        channelId,
+        messageContent: message.content
+      });
+      logger.debug('Processing message.', {
+        userTag: message.author.tag,
+        userId: message.author.id,
+        channelName,
+        channelId
+      });
 
       const userText = message.content.replace(botMention, '@ChatGPT').trim();
       
       let imageContents = [];
       if (message.attachments && message.attachments.size > 0) {
-        logger.debug(`Processing ${message.attachments.size} attachment(s) from message ${message.id}`);
+        logger.debug('Processing attachments from message.', {
+          messageId: message.id,
+          attachmentCount: message.attachments.size
+        });
         imageContents = await processImageAttachments(Array.from(message.attachments.values()));
-        logger.info(`Processed ${imageContents.length} image(s) from message ${message.id}`);
+        logger.info('Processed images from message.', {
+          messageId: message.id,
+          imageCount: imageContents.length
+        });
       }
 
       // Check if replying to another user's message with images
@@ -111,32 +132,43 @@ module.exports = {
           );
           
           if (referencedImageAttachments.length > 0) {
-            logger.debug(`Processing ${referencedImageAttachments.length} image(s) from referenced message ${referencedMessage.id}`);
+            logger.debug('Processing images from referenced message.', {
+              referencedMessageId: referencedMessage.id,
+              imageCount: referencedImageAttachments.length
+            });
             const referencedImages = await processImageAttachments(referencedImageAttachments);
             imageContents.push(...referencedImages);
-            logger.info(`Processed ${referencedImages.length} image(s) from referenced message ${referencedMessage.id}`);
+            logger.info('Processed images from referenced message.', {
+              referencedMessageId: referencedMessage.id,
+              imageCount: referencedImages.length
+            });
           }
         }
       }
 
       if (!client.conversationHistory.has(channelId)) {
-        logger.debug(`No conversation history found for channel ${channelId}.`);
+        logger.debug('No conversation history found for channel.', { channelId });
         const systemMessage = createSystemMessage(modelName);
         client.conversationHistory.set(channelId, [systemMessage]);
-        logger.info(`Created new conversation history for channel ${channelId}.`);
+        logger.info('Created new conversation history for channel.', { channelId });
       }
 
       const channelHistory = client.conversationHistory.get(channelId);
       
       if (isReplyToBot && referencedMessage) {
-        logger.debug(`Adding bot's previous response to conversation history for channel ${channelId}.`);
+        logger.debug('Adding bot previous response to conversation history.', { channelId });
         channelHistory.push({
           role: 'assistant',
           content: referencedMessage.content
         });
       }
 
-      logger.debug(`Adding user message (${message.id}) from ${message.author.tag} to conversation history for channel ${channelId}.`);
+      logger.debug('Adding user message to conversation history.', {
+        messageId: message.id,
+        userTag: message.author.tag,
+        userId: message.author.id,
+        channelId
+      });
       
       const messageContent = createMessageContent(userText, imageContents);
       
@@ -160,15 +192,21 @@ module.exports = {
 
       trimConversationHistory(channelHistory, maxHistoryLength);
 
-      logger.debug(`Updated conversation history for channel ${channelId}`);
+      logger.debug('Updated conversation history.', { channelId });
 
       try {
-        logger.info(`Generating AI response for message ${message.id} from ${message.author.tag}.`);
+        logger.info('Generating AI response for message.', {
+          messageId: message.id,
+          userTag: message.author.tag,
+          userId: message.author.id
+        });
         
         const reply = await generateAIResponse(channelHistory);
 
         if (!reply) {
-          logger.warn('No reply generated from AI service.');
+          logger.warn('No reply generated from AI service.', {
+            messageId: message.id
+          });
           if (thinkingMessage) {
             await thinkingMessage.edit({
               content: "⚠️ I couldn't generate a response."
@@ -182,7 +220,11 @@ module.exports = {
           return;
         }
 
-        logger.info(`Sending AI response (${reply.length} chars) for message ${message.id} in channel ${channelId}.`);
+        logger.info('Sending AI response.', {
+          messageId: message.id,
+          channelId,
+          responseLength: reply.length
+        });
 
         const messageChunks = splitMessage(reply);
         
@@ -213,21 +255,27 @@ module.exports = {
             }
           }
         } catch (sendError) {
-          logger.error(`Failed to send response for message ${message.id}.`, {
+          logger.error('Failed to send response.', {
             error: sendError.stack,
-            errorMessage: sendError.message
+            errorMessage: sendError.message,
+            messageId: message.id
           });
         }
 
-        logger.debug(`Adding AI response to conversation history for channel ${channelId}.`);
+        logger.debug('Adding AI response to conversation history.', { channelId });
         channelHistory.push({
           role: 'assistant',
           content: reply
         });
 
-        logger.info(`Reply sent successfully to ${message.author.tag} in channel: ${channelName}`);
+        logger.info('Reply sent successfully.', {
+          userTag: message.author.tag,
+          userId: message.author.id,
+          channelName,
+          channelId
+        });
       } catch (error) {
-        logger.error('Error processing message:', {
+        logger.error('Error processing message.', {
           error: error.stack,
           message: error.message,
           userId,

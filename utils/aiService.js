@@ -39,7 +39,7 @@ const openai = new OpenAI({
  */
 async function generateAIResponse(conversation) {
   if (!conversation || conversation.length === 0) {
-    logger.error('Cannot generate AI response; empty conversation provided.');
+    logger.error('Cannot generate AI response, empty conversation provided.');
     return '';
   }
 
@@ -87,7 +87,7 @@ async function generateAIResponse(conversation) {
         temperatureValue = temperature;
       }
       
-      logger.debug(`Sending conversation to OpenAI API using model: ${modelName}.`, {
+      logger.debug('Sending conversation to OpenAI API.', {
         messageCount: conversation.length,
         model: modelName,
         temperature: temperatureValue,
@@ -107,14 +107,14 @@ async function generateAIResponse(conversation) {
       return '';
     }
 
-    logger.debug('Received response from OpenAI API:', {
+    logger.debug('Received response from OpenAI API.', {
       responseId: response.id,
       status: response.status,
       totalTokens: response.usage?.total_tokens
     });
     
     if (response.status !== 'completed') {
-      logger.warn('OpenAI API response not completed:', {
+      logger.warn('OpenAI API response not completed.', {
         model: modelName,
         responseStatus: response.status,
         responseId: response.id
@@ -129,16 +129,15 @@ async function generateAIResponse(conversation) {
       return 'I apologize, but I couldn\'t generate a response. Please try again.';
     }
     
-    logger.info('Generated AI response successfully:', {
+    logger.info('Generated AI response successfully.', {
       responseId: response.id,
       charCount: reply.length,
-      tokensUsed: response.usage?.total_tokens,
-      rawReply: reply
+      tokensUsed: response.usage?.total_tokens
     });
     
     return reply;
   } catch (error) {
-    logger.error('Error generating AI response:', {
+    logger.error('Error generating AI response.', {
       error: error.stack,
       message: error.message,
       model: modelName,

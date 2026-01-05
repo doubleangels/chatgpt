@@ -41,7 +41,10 @@ function splitMessage(text, limit = 2000) {
       return [text];
     }
     
-    logger.debug(`Splitting message of ${text.length} characters into chunks of max ${limit} characters.`);
+    logger.debug('Splitting message into chunks.', {
+      textLength: text.length,
+      maxChunkSize: limit
+    });
     
     const chunks = [];
     let remainingText = text;
@@ -56,18 +59,24 @@ function splitMessage(text, limit = 2000) {
       
       remainingText = remainingText.replace(/^[\s\n\r]+/, '');
       
-      logger.debug(`Chunk ${chunks.length} created with ${chunk.length} characters.`);
+      logger.debug('Chunk created.', {
+        chunkNumber: chunks.length,
+        chunkLength: chunk.length
+      });
     }
     
     if (remainingText.length > 0) {
       const finalChunk = remainingText.trim();
       if (finalChunk.length > 0) {
         chunks.push(finalChunk);
-        logger.debug(`Final chunk ${chunks.length} created with ${finalChunk.length} characters.`);
+        logger.debug('Final chunk created.', {
+          chunkNumber: chunks.length,
+          chunkLength: finalChunk.length
+        });
       }
     }
     
-    logger.info(`Message split into ${chunks.length} chunks.`, {
+    logger.info('Message split into chunks.', {
       originalLength: text.length,
       chunkCount: chunks.length,
       chunkSizes: chunks.map(chunk => chunk.length),
@@ -225,7 +234,10 @@ async function processImageAttachments(attachments) {
     
     if (isImage) {
       try {
-        logger.debug(`Processing image attachment: ${attachment.filename} (${attachment.contentType})`);
+        logger.debug('Processing image attachment.', {
+          filename: attachment.filename,
+          contentType: attachment.contentType
+        });
         const base64Image = await downloadImageAsBase64(attachment.url);
         
         imageContents.push({
@@ -233,11 +245,14 @@ async function processImageAttachments(attachments) {
           image_url: base64Image
         });
         
-        logger.debug(`Successfully processed image: ${attachment.filename}`);
+        logger.debug('Successfully processed image.', {
+          filename: attachment.filename
+        });
       } catch (error) {
-        logger.error(`Failed to process image attachment: ${attachment.filename}`, {
+        logger.error('Failed to process image attachment.', {
           error: error.stack,
-          message: error.message
+          message: error.message,
+          filename: attachment.filename
         });
       }
     }
@@ -270,7 +285,10 @@ function hasImages(conversation) {
  */
 function trimConversationHistory(channelHistory, maxHistoryLength) {
   if (channelHistory.length > maxHistoryLength + 1) {
-    logger.debug(`Trimming conversation history (current: ${channelHistory.length}, max: ${maxHistoryLength + 1}).`);
+    logger.debug('Trimming conversation history.', {
+      currentLength: channelHistory.length,
+      maxLength: maxHistoryLength + 1
+    });
     const systemMessage = channelHistory[0];
     channelHistory.splice(1, channelHistory.length - maxHistoryLength - 1);
     channelHistory[0] = systemMessage;
