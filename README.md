@@ -34,8 +34,6 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
-    tmpfs:
-      - /tmp
     environment:
       - DISCORD_BOT_TOKEN=your_discord_bot_token_here
       - DISCORD_CLIENT_ID=your_discord_client_id_here
@@ -45,6 +43,8 @@ services:
       - REASONING_EFFORT=minimal
       - RESPONSES_VERBOSITY=low
       - LOG_LEVEL=info
+    tmpfs:
+      - /tmp
 ```
 
 2. **Deploy the bot:**
