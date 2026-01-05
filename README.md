@@ -25,6 +25,17 @@ services:
     image: ghcr.io/doubleangels/chatgpt:latest
     container_name: chatgpt-discord-bot
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     environment:
       - DISCORD_BOT_TOKEN=your_discord_bot_token_here
       - DISCORD_CLIENT_ID=your_discord_client_id_here
