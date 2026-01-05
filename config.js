@@ -24,14 +24,14 @@ if (!envModel) {
  * @type {Object}
  */
 const config = {
-  token: process.env.DISCORD_BOT_TOKEN,
   clientId: process.env.DISCORD_CLIENT_ID,
-  openaiApiKey: process.env.OPENAI_API_KEY,
-  modelName: resolvedModel,
-  maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH, 10) || 20,
   logLevel: process.env.LOG_LEVEL || 'info',
+  maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH, 10) || 20,
+  modelName: resolvedModel,
+  openaiApiKey: process.env.OPENAI_API_KEY,
   reasoningEffort: process.env.REASONING_EFFORT || 'minimal',
   responsesVerbosity: process.env.RESPONSES_VERBOSITY || 'low',
+  token: process.env.DISCORD_BOT_TOKEN,
 };
 
 /**

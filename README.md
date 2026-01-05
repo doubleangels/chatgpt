@@ -37,12 +37,12 @@ services:
     environment:
       - DISCORD_BOT_TOKEN=your_discord_bot_token_here
       - DISCORD_CLIENT_ID=your_discord_client_id_here
-      - OPENAI_API_KEY=your_openai_api_key_here
-      - MODEL_NAME=gpt-5-nano
+      - LOG_LEVEL=info
       - MAX_HISTORY_LENGTH=20
+      - MODEL_NAME=gpt-5-nano
+      - OPENAI_API_KEY=your_openai_api_key_here
       - REASONING_EFFORT=minimal
       - RESPONSES_VERBOSITY=low
-      - LOG_LEVEL=info
     tmpfs:
       - /tmp
 ```
@@ -61,12 +61,12 @@ docker-compose up -d
 | --------------------- | ------------------------------------------------------------------------------------ | -------- | ------------ | ------------------------ |
 | `DISCORD_BOT_TOKEN`   | Discord bot authentication token                                                     | ✅       | -            | -                        |
 | `DISCORD_CLIENT_ID`   | Discord application client ID                                                        | ✅       | -            | -                        |
-| `OPENAI_API_KEY`      | OpenAI API key for AI services                                                       | ✅       | -            | -                        |
-| `MODEL_NAME`          | OpenAI model to use                                                                  | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
+| `LOG_LEVEL`           | Logging verbosity                                                                    | ❌       | `info`       | `debug`, `warn`, `error` |
 | `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                                  | ❌       | `20`         | `20`                     |
+| `MODEL_NAME`          | OpenAI model to use                                                                  | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
+| `OPENAI_API_KEY`      | OpenAI API key for AI services                                                       | ✅       | -            | -                        |
 | `REASONING_EFFORT`    | Additional reasoning depth (`minimal`, `low`, `medium`, `high`) for supported models | ❌       | `minimal`    | `medium`                 |
 | `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`)                        | ❌       | `low`        | `medium`                 |
-| `LOG_LEVEL`           | Logging verbosity                                                                    | ❌       | `info`       | `debug`, `warn`, `error` |
 
 ### Supported Models
 
