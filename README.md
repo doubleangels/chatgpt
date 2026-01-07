@@ -13,11 +13,22 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
 
 - [Discord Bot Token](https://discord.com/developers/applications) - Create a new application and bot
 - [OpenAI API Key](https://platform.openai.com/overview) - Get your API key from OpenAI
+- [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/) - For secure secret management
 - Docker and Docker Compose
 
 ### Docker Deployment
 
-1. **Create a `docker-compose.yml` file:**
+1. **Set up Bitwarden Secrets Manager:**
+
+   - Create secrets in your Bitwarden Secrets Manager project for:
+     - `DISCORD_BOT_TOKEN`
+     - `DISCORD_CLIENT_ID`
+     - `OPENAI_API_KEY`
+     - Optionally: `LOG_LEVEL`, `MAX_HISTORY_LENGTH`, `MODEL_NAME`, `REASONING_EFFORT`, `RESPONSES_VERBOSITY`
+   - Note the secret IDs for each secret
+   - Update `docker-entrypoint.sh` with your actual Bitwarden secret IDs
+
+2. **Create a `docker-compose.yml` file:**
 
 ```yaml
 services:
@@ -35,38 +46,50 @@ services:
       - no-new-privileges:true
     read_only: true
     environment:
-      - DISCORD_BOT_TOKEN=your_discord_bot_token_here
-      - DISCORD_CLIENT_ID=your_discord_client_id_here
-      - LOG_LEVEL=info
-      - MAX_HISTORY_LENGTH=20
-      - MODEL_NAME=gpt-5-nano
-      - OPENAI_API_KEY=your_openai_api_key_here
-      - REASONING_EFFORT=minimal
-      - RESPONSES_VERBOSITY=low
+      - BWS_ACCESS_TOKEN=${BWS_ACCESS_TOKEN}
     tmpfs:
       - /tmp
 ```
 
-2. **Deploy the bot:**
+3. **Set the BWS access token and deploy:**
 
 ```bash
+export BWS_ACCESS_TOKEN=your_bws_access_token_here
 docker-compose up -d
 ```
 
 ## ⚙️ Configuration
 
+### Bitwarden Secrets Manager Setup
+
+This bot uses [Bitwarden Secrets Manager](https://bitwarden.com/products/secrets-manager/) (BWS) to securely manage secrets. Secrets are retrieved at container startup via the `docker-entrypoint.sh` script.
+
+**Required Steps:**
+
+1. Create secrets in your Bitwarden Secrets Manager project
+2. Update `docker-entrypoint.sh` with your actual Bitwarden secret IDs
+3. Set the `BWS_ACCESS_TOKEN` environment variable when running the container
+
 ### Environment Variables
 
-| Variable              | Description                                                                          | Required | Default      | Example                  |
-| --------------------- | ------------------------------------------------------------------------------------ | -------- | ------------ | ------------------------ |
-| `DISCORD_BOT_TOKEN`   | Discord bot authentication token                                                     | ✅       | -            | -                        |
-| `DISCORD_CLIENT_ID`   | Discord application client ID                                                        | ✅       | -            | -                        |
-| `LOG_LEVEL`           | Logging verbosity                                                                    | ❌       | `info`       | `debug`, `warn`, `error` |
-| `MAX_HISTORY_LENGTH`  | Max conversation messages to retain                                                  | ❌       | `20`         | `20`                     |
-| `MODEL_NAME`          | OpenAI model to use                                                                  | ❌       | `gpt-5-nano` | `gpt-5`, `gpt-5-mini`    |
-| `OPENAI_API_KEY`      | OpenAI API key for AI services                                                       | ✅       | -            | -                        |
-| `REASONING_EFFORT`    | Additional reasoning depth (`minimal`, `low`, `medium`, `high`) for supported models | ❌       | `minimal`    | `medium`                 |
-| `RESPONSES_VERBOSITY` | Verbosity hint for supported models (`low`, `medium`, `high`)                        | ❌       | `low`        | `medium`                 |
+The following environment variables can be set in your `docker-compose.yml`:
+
+| Variable           | Description                                | Required | Default | Example |
+| ------------------ | ------------------------------------------ | :------: | :-----: | ------- |
+| `BWS_ACCESS_TOKEN` | Access token for Bitwarden Secrets Manager |    ✅    |    -    | -       |
+
+**Note:** Most secrets and API keys are automatically retrieved from Bitwarden Secrets Manager during container startup. You must provide `BWS_ACCESS_TOKEN` for the bot to access these secrets. The following secrets are retrieved from Bitwarden:
+
+- `DISCORD_BOT_TOKEN`
+- `DISCORD_CLIENT_ID`
+- `LOG_LEVEL`
+- `MAX_HISTORY_LENGTH`
+- `MODEL_NAME`
+- `OPENAI_API_KEY`
+- `REASONING_EFFORT`
+- `RESPONSES_VERBOSITY`
+
+Ensure your Bitwarden Secrets Manager access token is configured for the container to retrieve these secrets.
 
 ### Supported Models
 
