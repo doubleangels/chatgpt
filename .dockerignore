@@ -182,3 +182,15 @@ README.md
 # OS
 .DS_Store
 Thumbs.db
+
+# Build artifacts
+*.map
+*.min.js
+build/
+dist/
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/

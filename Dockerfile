@@ -1,7 +1,7 @@
 # Dockerfile for ChatGPT Bot
 # Multi-stage build for optimized image size and security
 
-# Use specific Node.js version for reproducibility
+# Use specific Node.js Alpine version for smaller image size
 FROM node:24.1.0-alpine AS base
 
 WORKDIR /app
