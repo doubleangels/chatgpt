@@ -194,3 +194,13 @@ dist/
 .gitlab-ci.yml
 .travis.yml
 .circleci/
+
+# Additional optimization - exclude more unnecessary files
+*.md
+LICENSE
+.editorconfig
+.eslintrc*
+.prettierrc*
+tsconfig.json
+*.config.js
+*.config.ts

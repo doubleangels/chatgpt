@@ -10,8 +10,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /app
 
-# Install runtime dependencies and create user in a single layer
-RUN apt-get update && \
+# Install runtime dependencies and create user in a single layer with BuildKit cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
     dumb-init \
     gosu \
@@ -26,8 +28,10 @@ COPY package*.json ./
 # Build stage for native modules
 FROM base AS builder
 
-# Install build dependencies for native modules (if needed)
-RUN apt-get update && \
+# Install build dependencies for native modules (better-sqlite3) with BuildKit cache
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
     python3 \
     make \
@@ -38,11 +42,14 @@ RUN apt-get update && \
 # Install dependencies with BuildKit cache mount for faster rebuilds
 # Using --omit=dev to exclude dev dependencies in production build
 RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/app/.npm \
     npm ci --omit=dev --prefer-offline && \
     npm cache clean --force
 
 # Remove build dependencies in same layer to reduce image size
-RUN apt-get purge -y --auto-remove \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get purge -y --auto-remove \
     python3 \
     make \
     g++ \
@@ -52,9 +59,11 @@ RUN apt-get purge -y --auto-remove \
 # Final runtime stage
 FROM base AS runtime
 
-# Install runtime dependencies and bws in a single layer
+# Install runtime dependencies and bws in a single layer with BuildKit cache
 # jq is kept as it's needed by the entrypoint script
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -74,6 +83,7 @@ COPY --from=builder --chown=discordbot:nodejs /app/node_modules ./node_modules
 COPY --chown=discordbot:nodejs docker-entrypoint.sh /app/docker-entrypoint.sh
 
 # Copy application files (this layer changes most frequently)
+# Use .dockerignore to exclude unnecessary files from build context
 COPY --chown=discordbot:nodejs . .
 
 # Set permissions and create data directory in a single layer
