@@ -42,8 +42,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Install dependencies with BuildKit cache mount for faster rebuilds
 # Using --omit=dev to exclude dev dependencies in production build
 RUN --mount=type=cache,target=/root/.npm \
-    --mount=type=cache,target=/app/.npm \
-    npm ci --omit=dev --prefer-offline && \
+    npm ci --omit=dev && \
     npm cache clean --force
 
 # Remove build dependencies in same layer to reduce image size
