@@ -24,7 +24,7 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
      - `DISCORD_BOT_TOKEN`
      - `DISCORD_CLIENT_ID`
      - `OPENAI_API_KEY`
-     - Optionally: `LOG_LEVEL`, `MAX_HISTORY_LENGTH`, `MAX_HISTORY_TOKENS`, `MAX_OUTPUT_TOKENS`, `MODEL_NAME`, `REASONING_EFFORT`, `RESPONSES_VERBOSITY`, `USER_COOLDOWN_MS`, `CHANNEL_COOLDOWN_MS`, `MAX_PENDING_PER_CHANNEL`, `IMAGE_DOWNLOAD_TIMEOUT_MS`, `MAX_IMAGE_BYTES`
+     - Optionally: `LOG_LEVEL`, `MAX_HISTORY_LENGTH`, `MAX_HISTORY_TOKENS`, `MODEL_NAME`, `REASONING_EFFORT`, `RESPONSES_VERBOSITY`, `USER_COOLDOWN_MS`, `CHANNEL_COOLDOWN_MS`, `MAX_PENDING_PER_CHANNEL`, `IMAGE_DOWNLOAD_TIMEOUT_MS`, `MAX_IMAGE_BYTES`
    - Note the secret IDs for each secret
    - Update `docker-entrypoint.sh` with your actual Bitwarden secret IDs
 
@@ -97,7 +97,6 @@ You can either:
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `MAX_OUTPUT_TOKENS` | Caps the model’s response length (helps prevent multi-message bursts and manage cost). | `600` |
 | `MAX_HISTORY_TOKENS` | Rough token-estimated cap for stored per-channel conversation history (in addition to `MAX_HISTORY_LENGTH`). `0` disables token trimming. | `0` |
 | `USER_COOLDOWN_MS` | Minimum time between requests per user (basic anti-spam/cost control). | `4000` |
 | `CHANNEL_COOLDOWN_MS` | Minimum time between requests per channel (reduces pile-ups). | `1500` |

@@ -31,8 +31,6 @@ const config = {
   // If unset/invalid, token trimming is effectively disabled.
   maxHistoryTokens: parseInt(process.env.MAX_HISTORY_TOKENS, 10) || 0,
   modelName: resolvedModel,
-  // Cap model output to reduce multi-message bursts & cost.
-  maxOutputTokens: parseInt(process.env.MAX_OUTPUT_TOKENS, 10) || 600,
   openaiApiKey: process.env.OPENAI_API_KEY,
   reasoningEffort: process.env.REASONING_EFFORT || 'minimal',
   responsesVerbosity: process.env.RESPONSES_VERBOSITY || 'low',

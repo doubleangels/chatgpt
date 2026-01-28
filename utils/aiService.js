@@ -4,8 +4,7 @@ const {
   modelName,
   getTemperature,
   reasoningEffort,
-  responsesVerbosity,
-  maxOutputTokens
+  responsesVerbosity
 } = require('../config');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
@@ -85,11 +84,6 @@ async function generateAIResponse(conversation) {
         };
       }
 
-      // Explicit output cap to prevent multi-message bursts and manage cost.
-      if (typeof maxOutputTokens === 'number' && maxOutputTokens > 0) {
-        requestParams.max_output_tokens = maxOutputTokens;
-      }
-      
       let temperatureValue = null;
       if (supportsCustomTemperature(modelName)) {
         const temperature = getTemperature();
@@ -103,7 +97,6 @@ async function generateAIResponse(conversation) {
         temperature: temperatureValue,
         reasoningEffort: normalizedReasoningEffort || undefined,
         verbosity: normalizedVerbosity || undefined,
-        maxOutputTokens: requestParams.max_output_tokens || undefined,
         hasImages: hasImages(conversation)
       });
     
@@ -126,16 +119,25 @@ async function generateAIResponse(conversation) {
       totalTokens: response.usage?.total_tokens
     });
     
+    const reply = response.output_text || '';
+
+    // The Responses API can return useful partial output with status "incomplete".
+    // Prefer returning the partial text rather than failing silently.
     if (response.status !== 'completed') {
       logger.warn('OpenAI API response not completed:', {
         model: modelName,
         responseStatus: response.status,
-        responseId: response.id
+        responseId: response.id,
+        incompleteDetails: response.incomplete_details || undefined,
+        hasOutputText: Boolean(reply && reply.trim())
       });
+
+      if (reply && reply.trim()) {
+        return reply;
+      }
+
       return '';
     }
-
-    const reply = response.output_text || '';
     
     if (!reply || reply.trim() === '') {
       logger.warn('Response is empty.');
