@@ -111,12 +111,14 @@ module.exports = {
         return;
       }
 
+      const isTriggered = hasBotMention || isReplyToBot;
+
       // Basic cooldowns to reduce spam/cost.
       const now = Date.now();
       const lastUser = client.userCooldowns.get(userId) || 0;
       if (userCooldownMs > 0 && now - lastUser < userCooldownMs) {
         const waitMs = userCooldownMs - (now - lastUser);
-        if (hasBotMention) {
+        if (isTriggered) {
           try {
             await message.reply({
               content: `⏳ Please wait ${Math.ceil(waitMs / 1000)}s before asking again.`,
@@ -131,6 +133,17 @@ module.exports = {
 
       const lastChannel = client.channelCooldowns.get(channelId) || 0;
       if (channelCooldownMs > 0 && now - lastChannel < channelCooldownMs) {
+        const waitMs = channelCooldownMs - (now - lastChannel);
+        if (isTriggered) {
+          try {
+            await message.reply({
+              content: `⏳ Give me ${Math.ceil(waitMs / 1000)}s—then try again.`,
+              allowedMentions: SAFE_ALLOWED_MENTIONS
+            });
+          } catch (err) {
+            logger.warn('Failed to send channel cooldown reply.', { channelId, errorMessage: err.message });
+          }
+        }
         return;
       }
 
