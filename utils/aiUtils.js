@@ -289,7 +289,8 @@ async function processImageAttachments(attachments) {
     
     if (isImage) {
       try {
-        logger.debug(`Processing image attachment: ${attachment.filename} (${attachment.contentType})`);
+        const attachmentLabel = attachment.name || attachment.filename || attachment.url || 'unknown';
+        logger.debug(`Processing image attachment: ${attachmentLabel} (${attachment.contentType})`);
         const base64Image = await downloadImageAsBase64(attachment.url);
         
         imageContents.push({
@@ -297,9 +298,10 @@ async function processImageAttachments(attachments) {
           image_url: base64Image
         });
         
-        logger.debug(`Successfully processed image: ${attachment.filename}`);
+        logger.debug(`Successfully processed image: ${attachmentLabel}`);
       } catch (error) {
-        logger.error(`Failed to process image attachment: ${attachment.filename}`, {
+        const attachmentLabel = attachment.name || attachment.filename || attachment.url || 'unknown';
+        logger.error(`Failed to process image attachment: ${attachmentLabel}`, {
           error: error.stack,
           message: error.message
         });
