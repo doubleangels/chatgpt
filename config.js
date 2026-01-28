@@ -27,10 +27,22 @@ const config = {
   clientId: process.env.DISCORD_CLIENT_ID,
   logLevel: process.env.LOG_LEVEL || 'info',
   maxHistoryLength: parseInt(process.env.MAX_HISTORY_LENGTH, 10) || 20,
+  // Rough, token-estimated cap for stored history (in addition to maxHistoryLength).
+  // If unset/invalid, token trimming is effectively disabled.
+  maxHistoryTokens: parseInt(process.env.MAX_HISTORY_TOKENS, 10) || 0,
   modelName: resolvedModel,
+  // Cap model output to reduce multi-message bursts & cost.
+  maxOutputTokens: parseInt(process.env.MAX_OUTPUT_TOKENS, 10) || 600,
   openaiApiKey: process.env.OPENAI_API_KEY,
   reasoningEffort: process.env.REASONING_EFFORT || 'minimal',
   responsesVerbosity: process.env.RESPONSES_VERBOSITY || 'low',
+  // Basic anti-spam/cost controls (in-memory, per process).
+  userCooldownMs: parseInt(process.env.USER_COOLDOWN_MS, 10) || 4000,
+  channelCooldownMs: parseInt(process.env.CHANNEL_COOLDOWN_MS, 10) || 1500,
+  maxPendingPerChannel: parseInt(process.env.MAX_PENDING_PER_CHANNEL, 10) || 3,
+  // Image download safety limits
+  imageDownloadTimeoutMs: parseInt(process.env.IMAGE_DOWNLOAD_TIMEOUT_MS, 10) || 8000,
+  maxImageBytes: parseInt(process.env.MAX_IMAGE_BYTES, 10) || 6_000_000,
   token: process.env.DISCORD_BOT_TOKEN,
 };
 

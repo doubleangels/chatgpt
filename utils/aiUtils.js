@@ -2,6 +2,8 @@ const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const https = require('https');
 const http = require('http');
+const { URL } = require('url');
+const { imageDownloadTimeoutMs, maxImageBytes } = require('../config');
 
 /**
  * System message constants for OpenAI API
@@ -166,27 +168,89 @@ function findLastOccurrence(text, searchStr, maxPos) {
  * @returns {Promise<string>} Base64 encoded image data with mime type
  */
 async function downloadImageAsBase64(url) {
-  return new Promise((resolve, reject) => {
-    const protocol = url.startsWith('https:') ? https : http;
-    
-    protocol.get(url, (response) => {
-      if (response.statusCode !== 200) {
-        reject(new Error(`Failed to download image: ${response.statusCode}`));
+  const maxRedirects = 3;
+  const timeoutMs = typeof imageDownloadTimeoutMs === 'number' && imageDownloadTimeoutMs > 0
+    ? imageDownloadTimeoutMs
+    : 8000;
+  const maxBytes = typeof maxImageBytes === 'number' && maxImageBytes > 0
+    ? maxImageBytes
+    : 6_000_000;
+
+  const download = (currentUrl, redirectsLeft) => new Promise((resolve, reject) => {
+    let parsed;
+    try {
+      parsed = new URL(currentUrl);
+    } catch {
+      reject(new Error('Invalid image URL.'));
+      return;
+    }
+
+    const protocol = parsed.protocol === 'https:' ? https : http;
+
+    const req = protocol.get(currentUrl, (response) => {
+      const status = response.statusCode || 0;
+
+      // Handle redirects.
+      if (status >= 300 && status < 400 && response.headers.location) {
+        if (redirectsLeft <= 0) {
+          response.resume();
+          reject(new Error('Too many redirects while downloading image.'));
+          return;
+        }
+        const nextUrl = new URL(response.headers.location, parsed).toString();
+        response.resume();
+        resolve(download(nextUrl, redirectsLeft - 1));
+        return;
+      }
+
+      if (status !== 200) {
+        response.resume();
+        reject(new Error(`Failed to download image: HTTP ${status}`));
+        return;
+      }
+
+      const mimeType = (response.headers['content-type'] || '').toString();
+      if (!mimeType.startsWith('image/')) {
+        response.resume();
+        reject(new Error(`Unsupported content-type for image download: ${mimeType || 'unknown'}`));
+        return;
+      }
+
+      const contentLengthHeader = response.headers['content-length'];
+      const contentLength = contentLengthHeader ? parseInt(String(contentLengthHeader), 10) : NaN;
+      if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+        response.resume();
+        reject(new Error(`Image exceeds max size (${contentLength} > ${maxBytes} bytes).`));
         return;
       }
 
       const chunks = [];
-      response.on('data', (chunk) => chunks.push(chunk));
+      let total = 0;
+
+      response.on('data', (chunk) => {
+        total += chunk.length;
+        if (total > maxBytes) {
+          req.destroy(new Error(`Image exceeds max size (${maxBytes} bytes).`));
+          return;
+        }
+        chunks.push(chunk);
+      });
+
       response.on('end', () => {
         const buffer = Buffer.concat(chunks);
-        const mimeType = response.headers['content-type'] || 'image/jpeg';
         const base64 = buffer.toString('base64');
         resolve(`data:${mimeType};base64,${base64}`);
       });
-    }).on('error', (error) => {
-      reject(error);
     });
+
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`Image download timed out after ${timeoutMs}ms.`));
+    });
+
+    req.on('error', (error) => reject(error));
   });
+
+  return download(url, maxRedirects);
 }
 
 /**
@@ -261,20 +325,66 @@ function hasImages(conversation) {
   });
 }
 
+function estimateTokensFromText(text) {
+  if (!text) return 0;
+  // Very rough heuristic: ~4 chars per token for English-ish text.
+  return Math.ceil(String(text).length / 4);
+}
+
+function estimateMessageTokens(message) {
+  if (!message) return 0;
+  const content = message.content;
+  if (typeof content === 'string') return estimateTokensFromText(content);
+  if (!Array.isArray(content)) return 0;
+
+  let total = 0;
+  for (const item of content) {
+    if (item && item.type === 'input_text' && typeof item.text === 'string') {
+      total += estimateTokensFromText(item.text);
+    }
+  }
+  return total;
+}
+
 /**
  * Trims conversation history to maintain maximum length while preserving system message.
  * 
  * @param {Array} channelHistory - The conversation history array
  * @param {number} maxHistoryLength - Maximum number of messages to keep
+ * @param {number} [maxHistoryTokens=0] - Rough token cap (0 disables token trimming)
  * @returns {Array} The trimmed conversation history
  */
-function trimConversationHistory(channelHistory, maxHistoryLength) {
+function trimConversationHistory(channelHistory, maxHistoryLength, maxHistoryTokens = 0) {
+  if (!Array.isArray(channelHistory) || channelHistory.length === 0) return channelHistory;
+
   if (channelHistory.length > maxHistoryLength + 1) {
     logger.debug(`Trimming conversation history (current: ${channelHistory.length}, max: ${maxHistoryLength + 1}).`);
     const systemMessage = channelHistory[0];
     channelHistory.splice(1, channelHistory.length - maxHistoryLength - 1);
     channelHistory[0] = systemMessage;
   }
+
+  if (typeof maxHistoryTokens === 'number' && maxHistoryTokens > 0) {
+    let totalTokens = 0;
+    for (const msg of channelHistory) totalTokens += estimateMessageTokens(msg);
+
+    let removed = 0;
+    while (channelHistory.length > 1 && totalTokens > maxHistoryTokens) {
+      const removedMsg = channelHistory.splice(1, 1)[0];
+      totalTokens -= estimateMessageTokens(removedMsg);
+      removed += 1;
+    }
+
+    if (removed > 0) {
+      logger.debug('Trimmed conversation by token estimate.', {
+        removedMessages: removed,
+        remainingMessages: channelHistory.length,
+        estimatedTokens: totalTokens,
+        maxHistoryTokens
+      });
+    }
+  }
+
   return channelHistory;
 }
 

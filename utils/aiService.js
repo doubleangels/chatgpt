@@ -1,5 +1,12 @@
 const { OpenAI } = require('openai');
-const { openaiApiKey, modelName, getTemperature, reasoningEffort, responsesVerbosity } = require('../config');
+const {
+  openaiApiKey,
+  modelName,
+  getTemperature,
+  reasoningEffort,
+  responsesVerbosity,
+  maxOutputTokens
+} = require('../config');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
 const { hasImages, SYSTEM_MESSAGES } = require('./aiUtils');
@@ -78,7 +85,10 @@ async function generateAIResponse(conversation) {
         };
       }
 
-      // Let the API determine output length; no explicit max token limit is set.
+      // Explicit output cap to prevent multi-message bursts and manage cost.
+      if (typeof maxOutputTokens === 'number' && maxOutputTokens > 0) {
+        requestParams.max_output_tokens = maxOutputTokens;
+      }
       
       let temperatureValue = null;
       if (supportsCustomTemperature(modelName)) {
@@ -91,7 +101,10 @@ async function generateAIResponse(conversation) {
         messageCount: conversation.length,
         model: modelName,
         temperature: temperatureValue,
-        requestParams: requestParams
+        reasoningEffort: normalizedReasoningEffort || undefined,
+        verbosity: normalizedVerbosity || undefined,
+        maxOutputTokens: requestParams.max_output_tokens || undefined,
+        hasImages: hasImages(conversation)
       });
     
     let response;
@@ -132,8 +145,7 @@ async function generateAIResponse(conversation) {
     logger.info('Generated AI response successfully:', {
       responseId: response.id,
       charCount: reply.length,
-      tokensUsed: response.usage?.total_tokens,
-      rawReply: reply
+      tokensUsed: response.usage?.total_tokens
     });
     
     return reply;

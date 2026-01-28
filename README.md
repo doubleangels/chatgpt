@@ -24,7 +24,7 @@ A feature-rich Discord bot powered by OpenAI's ChatGPT models, designed to provi
      - `DISCORD_BOT_TOKEN`
      - `DISCORD_CLIENT_ID`
      - `OPENAI_API_KEY`
-     - Optionally: `LOG_LEVEL`, `MAX_HISTORY_LENGTH`, `MODEL_NAME`, `REASONING_EFFORT`, `RESPONSES_VERBOSITY`
+     - Optionally: `LOG_LEVEL`, `MAX_HISTORY_LENGTH`, `MAX_HISTORY_TOKENS`, `MAX_OUTPUT_TOKENS`, `MODEL_NAME`, `REASONING_EFFORT`, `RESPONSES_VERBOSITY`, `USER_COOLDOWN_MS`, `CHANNEL_COOLDOWN_MS`, `MAX_PENDING_PER_CHANNEL`, `IMAGE_DOWNLOAD_TIMEOUT_MS`, `MAX_IMAGE_BYTES`
    - Note the secret IDs for each secret
    - Update `docker-entrypoint.sh` with your actual Bitwarden secret IDs
 
@@ -78,7 +78,7 @@ The following environment variables can be set in your `docker-compose.yml`:
 | ------------------ | ------------------------------------------ | :------: | :-----: | ------- |
 | `BWS_ACCESS_TOKEN` | Access token for Bitwarden Secrets Manager |    ✅    |    -    | -       |
 
-**Note:** Most secrets and API keys are automatically retrieved from Bitwarden Secrets Manager during container startup. You must provide `BWS_ACCESS_TOKEN` for the bot to access these secrets. The following secrets are retrieved from Bitwarden:
+**Note:** Most secrets and API keys are retrieved from Bitwarden Secrets Manager during container startup (via `docker-entrypoint.sh`). You must provide `BWS_ACCESS_TOKEN` for the bot to access these secrets. By default, this repository’s `docker-entrypoint.sh` retrieves:
 
 - `DISCORD_BOT_TOKEN`
 - `DISCORD_CLIENT_ID`
@@ -89,7 +89,21 @@ The following environment variables can be set in your `docker-compose.yml`:
 - `REASONING_EFFORT`
 - `RESPONSES_VERBOSITY`
 
-Ensure your Bitwarden Secrets Manager access token is configured for the container to retrieve these secrets.
+You can either:
+- Add additional `bws secret get ...` lines to `docker-entrypoint.sh` to retrieve more optional settings from Bitwarden, **or**
+- Provide optional settings as normal environment variables in your `docker-compose.yml` (recommended for non-sensitive tuning knobs).
+
+#### Optional tuning variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `MAX_OUTPUT_TOKENS` | Caps the model’s response length (helps prevent multi-message bursts and manage cost). | `600` |
+| `MAX_HISTORY_TOKENS` | Rough token-estimated cap for stored per-channel conversation history (in addition to `MAX_HISTORY_LENGTH`). `0` disables token trimming. | `0` |
+| `USER_COOLDOWN_MS` | Minimum time between requests per user (basic anti-spam/cost control). | `4000` |
+| `CHANNEL_COOLDOWN_MS` | Minimum time between requests per channel (reduces pile-ups). | `1500` |
+| `MAX_PENDING_PER_CHANNEL` | Max queued requests per channel before the bot responds “busy”. | `3` |
+| `IMAGE_DOWNLOAD_TIMEOUT_MS` | Timeout for downloading image attachments. | `8000` |
+| `MAX_IMAGE_BYTES` | Max bytes downloaded per image attachment. | `6000000` |
 
 ### Supported Models
 
@@ -119,11 +133,17 @@ The bot supports comprehensive image analysis when using vision-capable models:
 - Shared conversation history per channel, allowing multiple users to participate
 - Context preservation across message exchanges from all users
 - Automatic history management and cleanup
+- Basic backpressure (per-channel queue limit) and cooldowns to reduce spam/cost
 
 ### Interaction Methods
 
 - **Mentions**: `@ChatGPT What's the weather like?`
 - **Replies**: Reply to any bot message to continue the conversation
+
+### Safety Defaults
+
+- The bot sends messages with mentions disabled (`allowedMentions: { parse: [] }`) to avoid accidental `@everyone` / role pings.
+- Logs avoid printing full message contents and full model replies by default (metadata only).
 
 ## 🔧 Commands
 

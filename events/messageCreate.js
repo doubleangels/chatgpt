@@ -3,7 +3,16 @@ const { generateAIResponse } = require('../utils/aiService');
 const { splitMessage, processImageAttachments, createMessageContent, trimConversationHistory, createSystemMessage, SYSTEM_MESSAGES } = require('../utils/aiUtils');
 const path = require('path');
 const logger = require('../logger')(path.basename(__filename));
-const { maxHistoryLength, modelName } = require('../config');
+const {
+  maxHistoryLength,
+  maxHistoryTokens,
+  modelName,
+  userCooldownMs,
+  channelCooldownMs,
+  maxPendingPerChannel
+} = require('../config');
+
+const SAFE_ALLOWED_MENTIONS = { parse: [] };
 
 /**
  * Message create event handler module
@@ -32,16 +41,40 @@ module.exports = {
     const userId = message.author.id;
     const channelName = message.channel?.name || 'unknown';
 
+    // Fast-path ignore: if there's no mention and no reply reference, we can't be triggered.
+    const maybeTriggered = message.content.includes(botMention) || (message.reference && message.reference.messageId);
+    if (!maybeTriggered) return;
+
     // Initialize channel locks if not already present
     if (!client.channelLocks) {
       client.channelLocks = new Map();
     }
 
-    // Get or create lock for this channel
-    let channelLock = client.channelLocks.get(channelId);
-    if (!channelLock) {
-      channelLock = Promise.resolve();
-      client.channelLocks.set(channelId, channelLock);
+    if (!client.channelQueueDepth) {
+      client.channelQueueDepth = new Map();
+    }
+    if (!client.userCooldowns) {
+      client.userCooldowns = new Map();
+    }
+    if (!client.channelCooldowns) {
+      client.channelCooldowns = new Map();
+    }
+
+    // Basic backpressure: avoid unbounded queues per channel.
+    const pending = client.channelQueueDepth.get(channelId) || 0;
+    if (maxPendingPerChannel > 0 && pending >= maxPendingPerChannel) {
+      try {
+        await message.reply({
+          content: "⚠️ I'm busy in this channel—please try again in a few seconds.",
+          allowedMentions: SAFE_ALLOWED_MENTIONS
+        });
+      } catch (err) {
+        logger.warn('Failed to send busy/backpressure message.', {
+          channelId,
+          errorMessage: err.message
+        });
+      }
+      return;
     }
 
     // Wait for previous message processing to complete, then process this message
@@ -78,11 +111,34 @@ module.exports = {
         return;
       }
 
+      // Basic cooldowns to reduce spam/cost.
+      const now = Date.now();
+      const lastUser = client.userCooldowns.get(userId) || 0;
+      if (userCooldownMs > 0 && now - lastUser < userCooldownMs) {
+        const waitMs = userCooldownMs - (now - lastUser);
+        if (hasBotMention) {
+          try {
+            await message.reply({
+              content: `⏳ Please wait ${Math.ceil(waitMs / 1000)}s before asking again.`,
+              allowedMentions: SAFE_ALLOWED_MENTIONS
+            });
+          } catch (err) {
+            logger.warn('Failed to send cooldown reply.', { userId, channelId, errorMessage: err.message });
+          }
+        }
+        return;
+      }
+
+      const lastChannel = client.channelCooldowns.get(channelId) || 0;
+      if (channelCooldownMs > 0 && now - lastChannel < channelCooldownMs) {
+        return;
+      }
+
       let thinkingMessage;
       try {
         thinkingMessage = await message.reply({
           content: "*Thinking...*",
-          ephemeral: false
+          allowedMentions: SAFE_ALLOWED_MENTIONS
         });
       } catch (err) {
         logger.warn(`Failed to send thinking message in channel ${channelId}.`, {
@@ -91,7 +147,15 @@ module.exports = {
         });
       }
 
-      logger.info(`Message received from ${message.author.tag} in ${channelName}: ${message.content}`);
+      logger.info('Message received.', {
+        user: message.author.tag,
+        userId,
+        channelId,
+        channelName,
+        contentLength: message.content?.length || 0,
+        attachmentCount: message.attachments?.size || 0,
+        isReplyToBot
+      });
       logger.debug(`Processing message from ${message.author.tag} in ${channelName}`);
 
       const userText = message.content.replace(botMention, '@ChatGPT').trim();
@@ -129,11 +193,15 @@ module.exports = {
       const channelHistory = client.conversationHistory.get(channelId);
       
       if (isReplyToBot && referencedMessage) {
-        logger.debug(`Adding bot's previous response to conversation history for channel ${channelId}.`);
-        channelHistory.push({
-          role: 'assistant',
-          content: referencedMessage.content
-        });
+        // Avoid duplicating the assistant message if it's already in history.
+        const lastAssistant = [...channelHistory].reverse().find(m => m.role === 'assistant');
+        if (!lastAssistant || lastAssistant.content !== referencedMessage.content) {
+          logger.debug(`Adding bot's previous response to conversation history for channel ${channelId}.`);
+          channelHistory.push({
+            role: 'assistant',
+            content: referencedMessage.content
+          });
+        }
       }
 
       logger.debug(`Adding user message (${message.id}) from ${message.author.tag} to conversation history for channel ${channelId}.`);
@@ -158,7 +226,7 @@ module.exports = {
         content: finalMessageContent
       });
 
-      trimConversationHistory(channelHistory, maxHistoryLength);
+      trimConversationHistory(channelHistory, maxHistoryLength, maxHistoryTokens);
 
       logger.debug(`Updated conversation history for channel ${channelId}`);
 
@@ -171,12 +239,13 @@ module.exports = {
           logger.warn('No reply generated from AI service.');
           if (thinkingMessage) {
             await thinkingMessage.edit({
-              content: "⚠️ I couldn't generate a response."
+              content: "⚠️ I couldn't generate a response.",
+              allowedMentions: SAFE_ALLOWED_MENTIONS
             });
           } else {
             await message.reply({
               content: "⚠️ I couldn't generate a response.",
-              ephemeral: true
+              allowedMentions: SAFE_ALLOWED_MENTIONS
             });
           }
           return;
@@ -190,25 +259,27 @@ module.exports = {
           if (messageChunks.length === 1) {
             if (thinkingMessage) {
               await thinkingMessage.edit({
-                content: messageChunks[0]
+                content: messageChunks[0],
+                allowedMentions: SAFE_ALLOWED_MENTIONS
               });
             } else {
               await message.reply({
                 content: messageChunks[0],
-                ephemeral: false
+                allowedMentions: SAFE_ALLOWED_MENTIONS
               });
             }
           } else {
             if (thinkingMessage) {
               await thinkingMessage.edit({
-                content: messageChunks[0]
+                content: messageChunks[0],
+                allowedMentions: SAFE_ALLOWED_MENTIONS
               });
             }
             
             for (let i = 1; i < messageChunks.length; i++) {
               await message.reply({
                 content: messageChunks[i],
-                ephemeral: false
+                allowedMentions: SAFE_ALLOWED_MENTIONS
               });
             }
           }
@@ -226,6 +297,10 @@ module.exports = {
         });
 
         logger.info(`Reply sent successfully to ${message.author.tag} in channel: ${channelName}`);
+
+        // Update cooldown stamps only after successful completion.
+        client.userCooldowns.set(userId, Date.now());
+        client.channelCooldowns.set(channelId, Date.now());
       } catch (error) {
         logger.error('Error processing message:', {
           error: error.stack,
@@ -236,21 +311,37 @@ module.exports = {
         
         if (thinkingMessage) {
           await thinkingMessage.edit({
-            content: "⚠️ An error occurred while processing your request."
+            content: "⚠️ An error occurred while processing your request.",
+            allowedMentions: SAFE_ALLOWED_MENTIONS
           });
         } else {
           await message.reply({
             content: "⚠️ An error occurred while processing your request.",
-            ephemeral: true
+            allowedMentions: SAFE_ALLOWED_MENTIONS
           });
         }
       }
     };
 
-    const currentLock = channelLock.then(processMessage);
-    client.channelLocks.set(channelId, currentLock);
+    // Chain this message after the previous one. IMPORTANT: never store a rejecting promise,
+    // or the channel can get stuck forever.
+    const previousLock = client.channelLocks.get(channelId) || Promise.resolve();
+    client.channelQueueDepth.set(channelId, pending + 1);
 
-    // Wait for this message to be processed
+    const currentLock = previousLock
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await processMessage();
+        } finally {
+          const cur = client.channelQueueDepth.get(channelId) || 1;
+          client.channelQueueDepth.set(channelId, Math.max(0, cur - 1));
+        }
+      });
+
+    client.channelLocks.set(channelId, currentLock.catch(() => undefined));
+
+    // Wait for this message to be processed (errors handled inside).
     await currentLock;
   },
 
