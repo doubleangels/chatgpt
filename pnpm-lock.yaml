@@ -16,8 +16,8 @@ importers:
   .:
     dependencies:
       '@anthropic-ai/sdk':
-        specifier: ^0.122.0
-        version: 0.122.0
+        specifier: ^0.123.0
+        version: 0.123.0
       '@discordjs/rest':
         specifier: ^2.6.3
         version: 2.6.3
@@ -38,7 +38,7 @@ importers:
         version: 17.4.2
       openai:
         specifier: ^7.8.0
-        version: 7.8.0(undici@6.27.0)(ws@8.21.3)
+        version: 7.8.0(undici@6.28.0)(ws@8.21.3)
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -52,8 +52,8 @@ importers:
 
 packages:
 
-  '@anthropic-ai/sdk@0.122.0':
-    resolution: {integrity: sha512-GGPNftt0caaz9MDlmNQGHX8855Ojaduyy5pm9Sm1h7HalCn0cWNb5/bweadJF+4yzbal+QL6ztBa09WAAOzLmQ==}
+  '@anthropic-ai/sdk@0.123.0':
+    resolution: {integrity: sha512-Y9oX9mPNGZClHQOFqrWRk43Srcu/UHuPq3rfxxOq7JgW0gi+lJA2MAOK4Ul3k/+AUrwRWFJvd0tK3oC0Pw25dw==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -1482,7 +1482,7 @@ packages:
       '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
       '@smithy/hash-node': '>=4.3.0 <5'
       '@smithy/signature-v4': '>=5.4.0 <6'
-      undici: 6.27.0
+      undici: 6.28.0
       ws: ^8.21.0
       zod: ^3.25 || ^4.0
     peerDependenciesMeta:
@@ -1861,7 +1861,7 @@ packages:
 
 snapshots:
 
-  '@anthropic-ai/sdk@0.122.0':
+  '@anthropic-ai/sdk@0.123.0':
     dependencies:
       json-schema-to-ts: 3.1.1
       standardwebhooks: 1.0.0
@@ -3576,7 +3576,7 @@ snapshots:
     dependencies:
       mimic-fn: 2.1.0
 
-  openai@7.8.0(undici@6.27.0)(ws@8.21.3):
+  openai@7.8.0(undici@6.28.0)(ws@8.21.3):
     optionalDependencies:
       undici: 6.28.0
       ws: 8.21.3
